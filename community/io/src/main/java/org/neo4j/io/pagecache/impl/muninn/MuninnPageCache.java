@@ -42,6 +42,7 @@ import org.neo4j.io.pagecache.PageCache;
 import org.neo4j.io.pagecache.PageCacheOpenOptions;
 import org.neo4j.io.pagecache.PageSwapperFactory;
 import org.neo4j.io.pagecache.PagedFile;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
 import org.neo4j.io.pagecache.tracing.EvictionRunEvent;
 import org.neo4j.io.pagecache.tracing.FlushEventOpportunity;
 import org.neo4j.io.pagecache.tracing.MajorFlushEvent;
@@ -197,6 +198,10 @@ public class MuninnPageCache implements PageCache
 
     // 'true' (the default) if we should print any exceptions we get when unmapping a file.
     private boolean printExceptionsOnClose;
+
+    // Instance of our page cache eviction algorithm
+    private MuninnPageCacheAlgorithmCLOCK PageCacheAlgorithm = new MuninnPageCacheAlgorithmCLOCK( this.cooperativeEvictionLiveLockThreshold );
+
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.
      * @param pageCount The number of pages
@@ -314,7 +319,8 @@ public class MuninnPageCache implements PageCache
         if ( maxPages < minimumPageCount )
         {
             throw new IllegalArgumentException( String.format(
-                    "Page cache must have at least %s pages (%s bytes of memory), but was given %s pages.",
+                    "Page cache must have at least %s " +
+                            "this.pages = pages;pages (%s bytes of memory), but was given %s pages.",
                     minimumPageCount, minimumPageCount * memoryPerPage, maxPages ) );
         }
         maxPages = Math.min( maxPages, PageList.MAX_PAGES );
@@ -778,38 +784,27 @@ public class MuninnPageCache implements PageCache
 
     private long cooperativelyEvict( PageFaultEvent faultEvent ) throws IOException
     {
-        int iterations = 0;
-        int pageCount = pages.getPageCount();
-        int clockArm = ThreadLocalRandom.current().nextInt( pageCount );
-        boolean evicted = false;
-        long pageRef;
-        do
-        {
             assertHealthy();
             if ( getFreelistHead() != null )
             {
                 return 0;
             }
 
-            if ( clockArm == pageCount )
+            try
             {
-                if ( iterations == cooperativeEvictionLiveLockThreshold )
+                if ( this.PageCacheAlgorithm != null )
                 {
-                    throw cooperativeEvictionLiveLock();
+                    return this.PageCacheAlgorithm.cooperativlyEvict( faultEvent, this.pages);
                 }
-                iterations++;
-                clockArm = 0;
+                else
+                {
+                    return 0;
+                }
             }
-
-            pageRef = pages.deref( clockArm );
-            if ( pages.isLoaded( pageRef ) && pages.decrementUsage( pageRef ) )
+            catch ( Exception e )
             {
-                evicted = pages.tryEvict( pageRef, faultEvent );
+                throw e;
             }
-            clockArm++;
-        }
-        while ( !evicted );
-        return pageRef;
     }
 
     private CacheLiveLockException cooperativeEvictionLiveLock()

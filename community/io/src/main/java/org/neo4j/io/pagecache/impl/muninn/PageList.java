@@ -48,7 +48,7 @@ import static org.neo4j.util.FeatureToggles.flag;
  *     <tr><td>2</td><td>Page swapper id.</td></tr>
  * </table>
  */
-class PageList
+public class PageList
 {
     private static final boolean forceSlowMemoryClear = flag( PageList.class, "forceSlowMemoryClear", false );
 
