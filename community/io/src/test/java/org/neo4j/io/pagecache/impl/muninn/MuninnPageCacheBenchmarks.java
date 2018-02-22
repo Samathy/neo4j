@@ -1,13 +1,16 @@
 package org.neo4j.io.pagecache.impl.muninn;
 
 
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-
 import org.neo4j.io.pagecache.stress.Condition;
 import org.neo4j.io.pagecache.stress.PageCacheStressTest;
 import org.neo4j.io.pagecache.tracing.DefaultPageCacheTracer;
+import org.neo4j.io.pagecache.tracing.cursor.DefaultPageCursorTracer;
 import org.neo4j.test.rule.TestDirectory;
+
+import java.util.Map;
 
 import static org.neo4j.io.pagecache.stress.Conditions.numberOfEvictions;
 
@@ -20,56 +23,56 @@ import static org.neo4j.io.pagecache.stress.Conditions.numberOfEvictions;
  */
 public class MuninnPageCacheBenchmarks {
 
+    Map<String, DefaultPageCursorTracer> results;
     @Rule
     public TestDirectory testDirectory = TestDirectory.testDirectory();
+
+    @BeforeClass
+    public static void printHeadings()
+    {
+        System.out.println("testName, faults,evictions, pins, hits, hitRatio, flushes, bytesWritten, bytesRead");
+    }
 
     @Test
     /** This is an absurdly small number of pages.
      * It'll probably fail. **/
     public void stressWithFiftyCachePages() throws Exception {
-        DefaultPageCacheTracer monitor;
+        DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages(50);
-        System.out.println("stressWithFiftyCachePages:");
-        printMonitorStats(monitor) ;
-        printEightyChars("-");
+        printMonitorStats("stressWithFiftyCachePages", monitor);
     }
 
     @Test
     public void stressWithOneHundredCachePages() throws Exception {
-        DefaultPageCacheTracer monitor;
+        DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages(100);
-        System.out.println("stressWithOneHundredCachePages:");
-        printMonitorStats(monitor) ;
-        printEightyChars("-");
+        printMonitorStats("stressWithOneHundredCachePages", monitor);
     }
 
     @Test
     public void stressWithFiveHundredCachePages() throws Exception {
-        DefaultPageCacheTracer monitor;
+        DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages(500);
-        System.out.println("stressWithFiveHundredCachePages:");
-        printMonitorStats(monitor) ;
-        printEightyChars("-");
+        printMonitorStats("stressWithFiveHundredCachePages", monitor);
     }
 
     @Test
     public void stressWithOneThousandCachePages() throws Exception {
-        DefaultPageCacheTracer monitor;
+        DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages(1000);
-        System.out.println("stressWithOneThousandCachePages:");
-        printMonitorStats(monitor) ;
-        printEightyChars("-");
+        printMonitorStats("stressWithOneThousandCachePages", monitor);
     }
-
 
     /** Run a stress test using a given number of pages
      *
      * @param pages
      * @return
      */
-    private DefaultPageCacheTracer stressDefNoPages(int pages) throws Exception
+    private DefaultPageCursorTracer stressDefNoPages(int pages) throws Exception
     {
         DefaultPageCacheTracer monitor = new DefaultPageCacheTracer();
+        DefaultPageCursorTracer cursorTracer = new DefaultPageCursorTracer();
+        cursorTracer.init( monitor );
         Condition condition = numberOfEvictions(monitor, 100_000);
 
         PageCacheStressTest runner = new PageCacheStressTest.Builder()
@@ -77,30 +80,20 @@ public class MuninnPageCacheBenchmarks {
                 .withNumberOfCachePages(pages)
                 .with(monitor)
                 .with(condition)
+                .withPageCursorTracerSupplier( () -> cursorTracer)
                 .build();
 
         runner.run();
-        return monitor;
+        return cursorTracer;
     }
 
     /** Prints the statistics stored in the PageCacheCounters object
      *
      * @param monitor
      */
-    private void printMonitorStats(DefaultPageCacheTracer monitor)
+    private void printMonitorStats(String testName, DefaultPageCursorTracer monitor)
     {
-        String tabs = "    ";
-        System.out.println(tabs+"Files Mapped:"+monitor.filesMapped());
-        System.out.println(tabs+"Faults:"+monitor.faults());
-        System.out.println(tabs+"Evictions:"+monitor.evictions());
-        System.out.println(tabs+"Pins:"+monitor.pins());
-        System.out.println(tabs+"Unpins:"+monitor.unpins());
-        System.out.println(tabs+"Hits:"+monitor.hits());
-        System.out.println(tabs+"Hit Ratio:"+monitor.hitRatio());
-        System.out.println(tabs+"Usage Ratio:"+monitor.usageRatio());
-        System.out.println(tabs+"Flushes:"+monitor.flushes());
-        System.out.println(tabs+"bytesWritten: "+monitor.bytesWritten());
-        System.out.println(tabs+"bytesRead: "+monitor.bytesRead());
+        System.out.println(String.format("%s, %s, %s, %s, %s, %s, %s, %s, %s",testName, monitor.faults(),monitor.evictions(), monitor.pins(), monitor.hits(), monitor.hitRatio(), monitor.flushes(), monitor.bytesWritten(), monitor.bytesRead()));
     }
 
     void printEightyChars(String c)
@@ -111,5 +104,7 @@ public class MuninnPageCacheBenchmarks {
         }
         System.out.println();
     }
+
+
 
 }
