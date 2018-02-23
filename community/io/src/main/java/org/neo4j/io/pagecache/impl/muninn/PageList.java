@@ -20,10 +20,12 @@
 package org.neo4j.io.pagecache.impl.muninn;
 
 import java.io.IOException;
+import java.time.Instant;
 
 import org.neo4j.io.mem.MemoryAllocator;
 import org.neo4j.io.pagecache.PageCursor;
 import org.neo4j.io.pagecache.PageSwapper;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.EvictionEvent;
 import org.neo4j.io.pagecache.tracing.EvictionEventOpportunity;
 import org.neo4j.io.pagecache.tracing.FlushEvent;
@@ -45,6 +47,7 @@ import static org.neo4j.util.FeatureToggles.flag;
  *     <tr><td>8</td><td>File page id.</td></tr>
  *     <tr><td>4</td><td>Page swapper id.</td></tr>
  *     <tr><td>1</td><td>Usage stamp. Optimistically incremented; truncated to a max of 4.</td></tr>
+ *     <tr><td>2</td></tr>Recency stamp. Incremented every pin.
  *     <tr><td>3</td><td>Padding.</td></tr>
  * </table>
  */
@@ -59,6 +62,7 @@ public class PageList
     private static final int OFFSET_FILE_PAGE_ID = 16; // 8 bytes
     private static final int OFFSET_SWAPPER_ID = 24; // 4 bytes
     private static final int OFFSET_USAGE_COUNTER = 28; // 1 byte
+    private static final int OFFSET_RECENCY_COUNTER = 29; //2 bytes
     // todo it's possible to reduce the overhead of the individual page to just 24 bytes,
     // todo because the file page id can be represented with 5 bytes (enough to address 8-4 PBs),
     // todo and then the usage counter can use the high bits of that word, and the swapper id
@@ -241,6 +245,11 @@ public class PageList
         return pageRef + OFFSET_USAGE_COUNTER;
     }
 
+    private long offRecency (long pageRef )
+    {
+        return pageRef + OFFSET_RECENCY_COUNTER;
+    }
+
     private long offFilePageId( long pageRef )
     {
         return pageRef + OFFSET_FILE_PAGE_ID;
@@ -345,6 +354,27 @@ public class PageList
         UnsafeUtil.putByteVolatile( offUsage( pageRef ), count );
     }
 
+    /* Must be public so that the eviction algorithm can see it */
+    public short getRecencyCounter ( long pageRef )
+    {
+        return UnsafeUtil.getShortVolatile( offRecency( pageRef ) );
+    }
+
+    /* Must be public so we can set it from the PageCursor on a pin */
+    public void setRecencyCounter (long pageRef)
+    {
+        short recency;
+        long now = Instant.now().getEpochSecond();
+        recency = (short)(now - MuninnPageCacheAlgorithmLRU.referenceTime);
+        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
+    }
+
+    /* Set to given value */
+    public void setRecencyCounter (long pageRef, short recency)
+    {
+        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
+    }
+
     /**
      * Increment the usage stamp to at most 4.
      **/
@@ -357,6 +387,7 @@ public class PageList
             usage++;
             setUsageCounter( pageRef, usage );
         }
+        setRecencyCounter( pageRef );
     }
 
     /**
