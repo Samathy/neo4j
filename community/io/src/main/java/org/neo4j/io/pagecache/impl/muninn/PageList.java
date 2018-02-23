@@ -20,10 +20,12 @@
 package org.neo4j.io.pagecache.impl.muninn;
 
 import java.io.IOException;
+import java.time.Instant;
 
 import org.neo4j.io.mem.MemoryAllocator;
 import org.neo4j.io.pagecache.PageCursor;
 import org.neo4j.io.pagecache.PageSwapper;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.EvictionEvent;
 import org.neo4j.io.pagecache.tracing.EvictionEventOpportunity;
 import org.neo4j.io.pagecache.tracing.FlushEvent;
@@ -252,6 +254,11 @@ public class PageList
         return pageRef + OFFSET_USAGE_COUNTER;
     }
 
+    private long offRecency (long pageRef )
+    {
+        return pageRef + OFFSET_RECENCY_COUNTER;
+    }
+
     private long offFilePageId( long pageRef )
     {
         return pageRef + OFFSET_FILE_PAGE_ID;
@@ -356,6 +363,27 @@ public class PageList
         UnsafeUtil.putByteVolatile( offUsage( pageRef ), count );
     }
 
+    /* Must be public so that the eviction algorithm can see it */
+    public short getRecencyCounter ( long pageRef )
+    {
+        return UnsafeUtil.getShortVolatile( offRecency( pageRef ) );
+    }
+
+    /* Must be public so we can set it from the PageCursor on a pin */
+    public void setRecencyCounter (long pageRef)
+    {
+        short recency;
+        long now = Instant.now().getEpochSecond();
+        recency = (short)(now - MuninnPageCacheAlgorithmLRU.referenceTime);
+        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
+    }
+
+    /* Set to given value */
+    public void setRecencyCounter (long pageRef, short recency)
+    {
+        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
+    }
+
     /**
      * Increment the usage stamp to at most 4.
      **/
@@ -368,6 +396,7 @@ public class PageList
             usage++;
             setUsageCounter( pageRef, usage );
         }
+        setRecencyCounter( pageRef );
     }
 
     /**
