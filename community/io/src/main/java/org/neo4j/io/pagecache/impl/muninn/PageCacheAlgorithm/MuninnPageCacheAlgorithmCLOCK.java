@@ -26,7 +26,9 @@ import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
-
+/** Implements the CLOCK Page Cache Eviction Algorithm
+ *
+ */
 public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
 {
     private int cooperativeEvictionLiveLockThreshold;
