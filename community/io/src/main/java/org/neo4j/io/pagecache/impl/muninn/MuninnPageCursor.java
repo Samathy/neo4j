@@ -305,7 +305,10 @@ abstract class MuninnPageCursor extends PageCursor
                 if ( locked & pagedFile.isBoundTo( pageRef, swapperId, filePageId ) )
                 {
                     pinCursorToPage( pageRef, filePageId, swapper );
-                    pagedFile.setRecencyCounter(pageRef);
+                    pagedFile.notifyCacheAlgorithm( pageRef,
+                            new PageData( pageRef )
+                            .withLastUsage( System.nanoTime()
+                            ));
                     pinEvent.hit();
                     return;
                 }
@@ -350,7 +353,10 @@ abstract class MuninnPageCursor extends PageCursor
                 // Sweet, we didn't race with any other fault on this translation table entry.
                 long pageRef = pageFault( filePageId, swapper, chunkOffset, chunk, latch );
                 pinCursorToPage( pageRef, filePageId, swapper );
-                pagedFile.setRecencyCounter(pageRef);
+                pagedFile.notifyCacheAlgorithm( pageRef,
+                        new PageData( pageRef )
+                                .withLastUsage( System.nanoTime()
+                                ));
                 return true;
             }
             // Oops, looks like we raced with another page fault on this file page.

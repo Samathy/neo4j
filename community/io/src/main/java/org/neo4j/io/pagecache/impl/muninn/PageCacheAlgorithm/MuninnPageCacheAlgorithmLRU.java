@@ -1,7 +1,10 @@
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 
+import org.neo4j.graphdb.ExecutionPlanDescription;
+import org.neo4j.graphdb.index.Index;
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
+import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
@@ -11,11 +14,16 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static java.lang.String.format;
+
 /** Impliments the LRU Page Cache Eviction Algorithm
  *
  */
 public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 {
+
+
+
     private int cooperativeEvictionLiveLockThreshold;
 
     /** The local reference time.
@@ -31,9 +39,362 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
     // it being the same across all instances is a side effect that is
     // probably okay.
 
+    /** Store the page references in a doubly linked , ordered list.
+     * When a page is referenced, move it to the head of the list, making the tail of the list store
+     * what is probably the oldest
+     * the oldest page.
+     */
+    class doubleLinkedPageList
+    {
+
+        /** Page. Store many of these */
+        class Page
+        {
+            Page next;
+            Page last;
+
+            PageData pageData;
+            long pageRef;
+
+            public Page( long pageRef, PageData pageData)
+            {
+
+                this.last = null;
+                this.next = null;
+                this.pageData = pageData;
+                this.pageRef = pageRef;
+            }
+
+        }
+
+        Page head = null;
+        Page tail = null;
+
+        Page doubleLinkedPageList (long pageRef, PageData pageData)
+        {
+            this.head = new Page ( pageRef, pageData);
+            this.tail = this.head;
+
+            return this.head;
+        }
+
+        /** Find a given page in the list
+         *
+         * @param pageRef
+         * @return
+         * @throws IndexOutOfBoundsException
+         */
+        private synchronized Page findPage (long pageRef ) throws IndexOutOfBoundsException {
+            Page page;
+
+            int iterations = 0;
+
+            try {
+                if (this.head != null) {
+                    page = this.head;
+                } else {
+                    throw noSuchPage(pageRef);
+                }
+
+
+                while (page != this.tail) {
+
+                    if (page.pageRef == pageRef) {
+                        break;
+                    }
+
+                    if (page.next != null) {
+                        page = page.next;
+                    }
+
+                    iterations++;
+
+                }
+
+
+                if (page.pageRef != pageRef) {
+                    throw noSuchPage(pageRef);
+                }
+            }
+
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+            return page;
+
+        }
+
+        synchronized boolean exists ( long pageRef )
+        {
+            Page page = null;
+            try
+            {
+                page = findPage(pageRef);
+            }
+            catch  (Exception e)
+            {
+                return false;
+            }
+            return true;
+
+        }
+
+        /** Add a new page to the list if it doesnt already exist
+         *
+         * @param pageRef
+         * @param pageData
+         */
+        public synchronized Page addPageFront( long pageRef, PageData pageData )
+        {
+
+            //It might be the case that the list has no pages in yet, and we're the first.
+            if ( this.head != null ) {
+                verifyLinkedList();
+            }
+
+            Page newPage = new Page( pageRef, pageData);
+
+            if (this.head != null)
+            {
+                newPage.next = this.head;
+                this.head.last = newPage;
+
+                this.head = newPage;
+            }
+
+            if (this.head == null)
+            {
+                this.head = newPage;
+                this.tail = newPage;
+            }
+
+            verifyLinkedList();
+
+           return newPage;
+        }
+
+        /** Move a given page to the front of the list
+         *
+         * @param pageRef
+         */
+        public synchronized Page moveToFront( long pageRef ) throws IndexOutOfBoundsException
+        {
+            verifyLinkedList();
+
+            Page page = null;
+
+            try
+            {
+                page = findPage (pageRef);
+            }
+            catch (Exception e)
+            {
+               throw e;
+            }
+
+
+            //page should be this.head
+            if (page.last == null) {
+                if (page != this.head) {
+                    System.out.println("Oppsie! Is not head!");
+                }
+
+                verifyLinkedList();
+
+                return page;
+            }
+
+            //Page is in the middle
+            else if (page.last != null && page.next != null) {
+                page.last.next = page.next;
+                page.next.last = page.last;
+
+                page.last = null;
+
+                page.next = this.head;
+                this.head.last = page;
+                this.head = page;
+
+                verifyLinkedList();
+
+                return page;
+            }
+
+            //Page is at the end
+            else if ( page.next == null && page.last != null) {
+
+                page.last.next = null;
+                this.tail = page.last;
+
+                page.next = this.head;
+                this.head.last = page;
+                this.head = page;
+                page.last = null;
+
+                verifyLinkedList();
+
+                return page;
+            }
+
+            verifyLinkedList();
+
+            return page;
+        }
+
+        public synchronized void removePage( long pageRef ) throws IndexOutOfBoundsException
+        {
+            verifyLinkedList();
+
+            Page page = null;
+            try
+            {
+                 page = findPage(pageRef);
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+            //If we have both a next and a last, remove ourselves
+            if (page.last != null && page.next != null)
+            {
+                page.last.next = page.next;
+                page.next.last = page.last;
+            }
+
+            //We're the tail, probably.
+            if ( page.last != null  && page.next == null)
+            {
+                page.last.next = null;
+                this.tail = page.last;
+            }
+
+            //We're the head, probably.
+            if (page.last == null && page.next != null)
+            {
+                page.next.last = null;
+                this.head = page.next;
+            }
+
+            verifyLinkedList();
+
+        }
+
+        public synchronized void setPageData ( long pageRef, PageData pageData )
+        {
+            Page page = null;
+
+            try
+            {
+                page = findPage( pageRef );
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+            page.pageData = pageData;
+        }
+
+        public synchronized void setPageDataAndMoveToHead( long pageRef, PageData pageData)
+        {
+            verifyLinkedList();
+
+            try
+            {
+                setPageData( pageRef, pageData );
+
+                verifyLinkedList();
+
+                moveToFront( pageRef );
+
+                verifyLinkedList();
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+            verifyLinkedList();
+        }
+
+        private synchronized boolean verifyLinkedList () throws IllegalStateException
+        {
+            Page page = null;
+
+            if (this.head != null) {
+                page =this.head;
+            }
+            else {
+                throw linkedListErrorState("HEAD is null");
+            }
+
+            if (page.last != null)
+            {
+                throw linkedListErrorState("HEAD.last != null");
+            }
+
+            if (page.next == null)
+            {
+                if (page != this.tail) {
+                    throw linkedListErrorState("HEAD.next == null");
+                }
+            }
+
+            while ( page.next != null) {
+                Page lastPage = page;
+                page = page.next;
+
+                if (page.last != lastPage) {
+                    throw linkedListErrorState(format("Last page marker is in correct for page %d", page.pageRef));
+                }
+
+                if (page.next != null) {
+                    continue;
+                } else if (page.next == null && page == this.tail) {
+                    break;
+                } else if (page.next == null && page.next != this.tail) {
+                    throw linkedListErrorState("page.next == null BUT page != this.tail");
+                } else if (page.next != null && page == this.tail) {
+                    throw linkedListErrorState("Page.next != null BUT page == this.tail");
+                }
+
+            }
+
+            if (page == this.tail)
+            {
+                if (page.next != null)
+                {
+                    throw linkedListErrorState("Page.next is != null BUT page == this.tail");
+                }
+            }
+
+            return true;
+        }
+
+        private IndexOutOfBoundsException noSuchPage(long pageRef )
+        {
+            String msg = format("Could not find page with page ID of %d", pageRef);
+            return new IndexOutOfBoundsException(msg);
+        }
+
+        private IllegalStateException linkedListErrorState (String errorMessage)
+        {
+            String msg = format (" Cache algorithm Linked List is in an error state: %s", errorMessage);
+            return new IllegalStateException( msg);
+        }
+
+
+    }
+
+    /** Mirrors the actual page list, but just stores metadata about pages and is sorted */
+    doubleLinkedPageList dataPageList =  new doubleLinkedPageList();
+
     private void resetReferenceTime()
     {
-        referenceTime = Instant.now().getEpochSecond();
+        referenceTime = System.nanoTime();
     }
 
     public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold )
@@ -42,123 +403,59 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         resetReferenceTime();
     }
 
-    /** \brief Finds the page with the next lowest recency
-     *
-     * @param pages
-     * @param recency
-     * @return
-     */
-    private long findPageWithRecencyLowerThan( PageList pages, short recency )
+    public long cooperativlyEvict ( PageFaultEvent faultEvent, PageList pages) throws IOException
     {
-        long pageRef = 0;
-        long pageRefWithHighestRececncy = 0;
-        short highestRecency = 0;
 
-        for (int i = 0; i < pages.getPageCount(); i++)
-        {
-            short pageRecency = pages.getRecencyCounter( pageRef );
-
-            if (pageRecency <= recency && pageRecency > highestRecency)
-            {
-                highestRecency = recency;
-                pageRefWithHighestRececncy = pageRef;
-            }
-        }
-
-        return pageRefWithHighestRececncy;
-    }
-
-    /** Reset the reference counts but so they're still in rough order.
-     *
-     * @param pages
-     */
-    private void resetReferenceCounts( PageList pages)
-    {
-        long pageRef;
-        short highestRecency = Short.MAX_VALUE;
-        int pageCount = pages.getPageCount();
-
-        for (int i = 0; i < pages.getPageCount(); i++)
-        {
-            pageRef = findPageWithRecencyLowerThan( pages, highestRecency);
-            highestRecency =  pages.getRecencyCounter( pageRef );
-            if (pageCount <= Short.MAX_VALUE)
-            {
-                pages.setRecencyCounter(pageRef, (short)pageCount);
-            }
-            else
-            {
-                pages.setRecencyCounter(pageRef, Short.MAX_VALUE);
-            }
-        }
-    }
-
-    public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages) throws IOException {
-        /** Note this is called concurrently by Muninn, any object data stored should be
-         thread safe.
-         */
-        /* TODO we should check if the rececncy counts are filling up SHORT type and reset them */
-        int pageCount = pages.getPageCount();
-        long pageRef = 0;
         boolean evicted = false;
-
         int iterations = 0;
+        long evictionCandidate = this.dataPageList.tail.pageRef;
+        int pageCount = pages.getPageCount();
+        doubleLinkedPageList.Page evictionCandidatePage = this.dataPageList.tail;
 
-        //Candidates we tried to evict, but couldnt because they were locked.
-        HashSet impossibleCandidates = new HashSet();
+        synchronized (this.dataPageList) {
+            evictionCandidate = this.dataPageList.tail.pageRef;
+            pageCount = pages.getPageCount();
+            evictionCandidatePage = this.dataPageList.tail;
 
-        long evictionCandidate = 0;
-        short lowValue = 100;//Arbratary value. There'll almost certainly be a page with a smaller recency.
+            try {
 
-        do
-        {
-            /* Yup, linear search the page list! */
-            /* Find the page with the oldest reference (smallest) */
-            for (int i = 0; i < pages.getPageCount(); i++) {
-                pageRef = pages.deref(i);
-
-
-                if (!impossibleCandidates.contains(pageRef)) //Skip if we already know we can't evict it
-                {
-                    //Set the low value to the first non-impossible value we check.
-                    if (i ==0)
-                    {
-                        lowValue = pages.getRecencyCounter( pageRef );
-                    }
-                    short recency = pages.getRecencyCounter(pageRef);
-                    if (recency <= lowValue)
-                    {
-                        evictionCandidate = pageRef;
-                        lowValue = recency;
-                    }
-                }
-            }
-
-            //Try to evict
-            if (pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate) && !impossibleCandidates.contains( evictionCandidate )) {
-                evicted = pages.tryEvict(evictionCandidate, faultEvent);
-            }
-
-            if (!evicted) // We failed to evict a page. Mark that one as checked and try again.
-            {
-                //We've tried to evict every single page and can't evict any of them.
-                //We could check to see if cooperativeLiveLockThreshold < pageCount. In which case we should use that
-                //Instead of the page count to trigger the exception.
-                if ( impossibleCandidates.size() >= pageCount  || iterations >= pageCount)
-                {
-                    throw cooperativeEvictionLiveLock();
+                if (pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate)) {
+                    evicted = pages.tryEvict(evictionCandidate, faultEvent);
                 }
 
-                impossibleCandidates.add(evictionCandidate);
-                lowValue = 100;
+                while (!evicted ) {
+                    if ( iterations >= this.cooperativeEvictionLiveLockThreshold)
+                    {
+                        throw cooperativeEvictionLiveLock();
+                    }
+                    if (evictionCandidatePage.last != null) {
+                        evictionCandidatePage = evictionCandidatePage.last;
+                        evictionCandidate = evictionCandidatePage.pageRef;
+                    }
+
+                    if (pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate)) {
+                        evicted = pages.tryEvict(evictionCandidate, faultEvent);
+                    }
+
+                    iterations++;
+                }
+
+            } catch (Exception e) {
+                throw e;
             }
-            iterations++;
+
+            if (evicted) {
+                this.dataPageList.removePage(evictionCandidatePage.pageRef);
+            }
+
+            if (!evicted) {
+                throw cooperativeEvictionLiveLock();
+            }
+
+            return evictionCandidate;
         }
-        while ( !evicted );
-        return evictionCandidate;
-
-
     }
+
 
     private CacheLiveLockException cooperativeEvictionLiveLock()
     {
@@ -175,6 +472,18 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                         "your database." );
     }
 
+    @Override
+    public void notifyPin(long pageRef, PageData pageData)
+    {
+        if (!this.dataPageList.exists( pageRef ))
+        {
+            this.dataPageList.addPageFront( pageRef, pageData );
+        }
 
+        else if (this.dataPageList.exists (pageRef))
+        {
+            this.dataPageList.setPageDataAndMoveToHead( pageRef, pageData);
+        }
 
+    }
 }

@@ -23,8 +23,11 @@ import java.io.IOException;
 import java.time.Instant;
 
 import org.neo4j.io.mem.MemoryAllocator;
+import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageCursor;
+import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.PageSwapper;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.EvictionEvent;
 import org.neo4j.io.pagecache.tracing.EvictionEventOpportunity;
@@ -123,9 +126,10 @@ public class PageList
     private final long victimPageAddress;
     private final long baseAddress;
     private final long bufferAlignment;
+    private final PageCacheAlgorithm pageCacheAlgorithm;
 
-    PageList( int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
-              long victimPageAddress, long bufferAlignment )
+    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
+             long victimPageAddress, long bufferAlignment, PageCacheAlgorithm pageCacheAlgorithm)
     {
         this.pageCount = pageCount;
         this.cachePageSize = cachePageSize;
@@ -135,6 +139,22 @@ public class PageList
         long bytes = ((long) pageCount) * META_DATA_BYTES_PER_PAGE;
         this.baseAddress = memoryAllocator.allocateAligned( bytes, Long.BYTES );
         this.bufferAlignment = bufferAlignment;
+        this.pageCacheAlgorithm = pageCacheAlgorithm;
+        clearMemory( baseAddress, pageCount );
+    }
+
+    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
+             long victimPageAddress, long bufferAlignment)
+    {
+        this.pageCount = pageCount;
+        this.cachePageSize = cachePageSize;
+        this.memoryAllocator = memoryAllocator;
+        this.swappers = swappers;
+        this.victimPageAddress = victimPageAddress;
+        long bytes = ((long) pageCount) * META_DATA_BYTES_PER_PAGE;
+        this.baseAddress = memoryAllocator.allocateAligned( bytes, Long.BYTES );
+        this.bufferAlignment = bufferAlignment;
+        this.pageCacheAlgorithm = null;
         clearMemory( baseAddress, pageCount );
     }
 
@@ -154,6 +174,7 @@ public class PageList
         this.victimPageAddress = pageList.victimPageAddress;
         this.baseAddress = pageList.baseAddress;
         this.bufferAlignment = pageList.bufferAlignment;
+        this.pageCacheAlgorithm = pageList.pageCacheAlgorithm;
     }
 
     private void clearMemory( long baseAddress, long pageCount )
@@ -363,25 +384,11 @@ public class PageList
         UnsafeUtil.putByteVolatile( offUsage( pageRef ), count );
     }
 
-    /* Must be public so that the eviction algorithm can see it */
-    public short getRecencyCounter ( long pageRef )
+    public void notifyCacheAlgorithm( long pageRef, PageData pageData)
     {
-        return UnsafeUtil.getShortVolatile( offRecency( pageRef ) );
-    }
+        this.pageCacheAlgorithm.notifyPin( pageRef, pageData );
 
-    /* Must be public so we can set it from the PageCursor on a pin */
-    public void setRecencyCounter (long pageRef)
-    {
-        short recency;
-        long now = Instant.now().getEpochSecond();
-        recency = (short)(now - MuninnPageCacheAlgorithmLRU.referenceTime);
-        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
-    }
-
-    /* Set to given value */
-    public void setRecencyCounter (long pageRef, short recency)
-    {
-        UnsafeUtil.putShortVolatile( offRecency( pageRef ), recency);
+        return;
     }
 
     /**
@@ -396,7 +403,6 @@ public class PageList
             usage++;
             setUsageCounter( pageRef, usage );
         }
-        setRecencyCounter( pageRef );
     }
 
     /**
@@ -498,6 +504,11 @@ public class PageList
         event.addBytesRead( bytesRead );
         event.setCachePageId( toId( pageRef ) );
         setSwapperId( pageRef, swapperId ); // Page now considered isBoundTo( swapper, filePageId )
+
+        this.notifyCacheAlgorithm( pageRef,
+                new PageData( pageRef )
+                        .withFaultInTime( System.nanoTime() )
+        );
     }
 
     private static IllegalArgumentException swapperCannotBeNull()

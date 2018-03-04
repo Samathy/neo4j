@@ -22,6 +22,7 @@ package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
+import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
@@ -88,4 +89,8 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
                         "your database." );
     }
 
+    @Override
+    public void notifyPin(long pageRef, PageData pageData) {
+
+    }
 }
