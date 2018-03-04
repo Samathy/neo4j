@@ -24,10 +24,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Objects;
 
-import org.neo4j.io.pagecache.CursorException;
-import org.neo4j.io.pagecache.PageCursor;
-import org.neo4j.io.pagecache.PageSwapper;
-import org.neo4j.io.pagecache.PagedFile;
+import org.neo4j.io.pagecache.*;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 import org.neo4j.io.pagecache.tracing.PinEvent;
@@ -270,7 +267,10 @@ abstract class MuninnPageCursor extends PageCursor
                 if ( locked & pagedFile.isBoundTo( pageRef, swapperId, filePageId ) )
                 {
                     pinCursorToPage( pageRef, filePageId, swapper );
-                    pagedFile.setRecencyCounter(pageRef);
+                    pagedFile.notifyCacheAlgorithm( pageRef,
+                            new PageData( pageRef )
+                            .withLastUsage( System.nanoTime()
+                            ));
                     pinEvent.hit();
                     return;
                 }
@@ -315,7 +315,10 @@ abstract class MuninnPageCursor extends PageCursor
                 // Sweet, we didn't race with any other fault on this translation table entry.
                 long pageRef = pageFault( filePageId, swapper, chunkOffset, chunk, latch );
                 pinCursorToPage( pageRef, filePageId, swapper );
-                pagedFile.setRecencyCounter(pageRef);
+                pagedFile.notifyCacheAlgorithm( pageRef,
+                        new PageData( pageRef )
+                                .withLastUsage( System.nanoTime()
+                                ));
                 return true;
             }
             // Oops, looks like we raced with another page fault on this file page.

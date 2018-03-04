@@ -36,4 +36,7 @@ public interface PageCacheAlgorithm
      * @throws IOException
      */
     long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException;
+
+    void notifyPin( long pageRef, PageData pageData);
 }
+
