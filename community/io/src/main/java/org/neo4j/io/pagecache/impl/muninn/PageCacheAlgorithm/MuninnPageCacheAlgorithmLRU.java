@@ -1,8 +1,6 @@
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 
-import org.neo4j.graphdb.ExecutionPlanDescription;
-import org.neo4j.graphdb.index.Index;
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
@@ -10,9 +8,6 @@ import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.HashSet;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static java.lang.String.format;
 
@@ -21,8 +16,6 @@ import static java.lang.String.format;
  */
 public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 {
-
-
 
     private int cooperativeEvictionLiveLockThreshold;
 
@@ -70,8 +63,21 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         Page head = null;
         Page tail = null;
 
+        //Should we verify the list every time we do something with it?
+        //Usful for tests/debugging
+        boolean verifyList = false;
+
         Page doubleLinkedPageList (long pageRef, PageData pageData)
         {
+            this.head = new Page ( pageRef, pageData);
+            this.tail = this.head;
+
+            return this.head;
+        }
+
+        Page doubleLinkedPageList (long pageRef, PageData pageData, boolean verifyList)
+        {
+            this.verifyList = verifyList;
             this.head = new Page ( pageRef, pageData);
             this.tail = this.head;
 
@@ -97,7 +103,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                 }
 
 
-                while (page != this.tail) {
+                while (page.next != null) {
 
                     if (page.pageRef == pageRef) {
                         break;
@@ -110,7 +116,6 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                     iterations++;
 
                 }
-
 
                 if (page.pageRef != pageRef) {
                     throw noSuchPage(pageRef);
@@ -285,13 +290,9 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         public synchronized void setPageData ( long pageRef, PageData pageData )
         {
             Page page = null;
-
-            try
-            {
-                page = findPage( pageRef );
-            }
-            catch (Exception e)
-            {
+            try {
+                page = findPage(pageRef);
+            } catch (Exception e) {
                 throw e;
             }
 
@@ -304,7 +305,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
             try
             {
-                setPageData( pageRef, pageData );
+                setPageData(pageRef, pageData);
 
                 verifyLinkedList();
 
@@ -320,8 +321,13 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
             verifyLinkedList();
         }
 
-        private synchronized boolean verifyLinkedList () throws IllegalStateException
+        public synchronized boolean verifyLinkedList () throws IllegalStateException
         {
+            if (this.verifyList == false)
+            {
+                return true;
+            }
+
             Page page = null;
 
             if (this.head != null) {
@@ -475,14 +481,14 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
     @Override
     public void notifyPin(long pageRef, PageData pageData)
     {
-        if (!this.dataPageList.exists( pageRef ))
-        {
-            this.dataPageList.addPageFront( pageRef, pageData );
-        }
-
-        else if (this.dataPageList.exists (pageRef))
-        {
-            this.dataPageList.setPageDataAndMoveToHead( pageRef, pageData);
+        synchronized ( this.dataPageList) {
+            if (!this.dataPageList.exists(pageRef)) {
+                this.dataPageList.addPageFront(pageRef, pageData);
+                return;
+            } else if (this.dataPageList.exists(pageRef)) {
+                this.dataPageList.setPageDataAndMoveToHead(pageRef, pageData);
+                return;
+            }
         }
 
     }
