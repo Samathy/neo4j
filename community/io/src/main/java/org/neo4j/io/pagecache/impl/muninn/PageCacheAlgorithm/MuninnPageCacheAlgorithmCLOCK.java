@@ -93,4 +93,10 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
     public void notifyPin(long pageRef, PageData pageData) {
 
     }
+
+    @Override
+    public void externalEviction (long pageRef, PageData pageData)
+    {
+
+    }
 }

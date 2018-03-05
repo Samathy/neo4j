@@ -37,11 +37,7 @@ import java.util.concurrent.locks.LockSupport;
 import org.neo4j.io.fs.DefaultFileSystemAbstraction;
 import org.neo4j.io.fs.FileSystemAbstraction;
 import org.neo4j.io.mem.MemoryAllocator;
-import org.neo4j.io.pagecache.IOLimiter;
-import org.neo4j.io.pagecache.PageCache;
-import org.neo4j.io.pagecache.PageCacheOpenOptions;
-import org.neo4j.io.pagecache.PageSwapperFactory;
-import org.neo4j.io.pagecache.PagedFile;
+import org.neo4j.io.pagecache.*;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.EvictionRunEvent;
@@ -943,6 +939,11 @@ public class MuninnPageCache implements PageCache
                 {
                     if ( pages.tryEvict( pageRef, evictionRunEvent ) )
                     {
+
+                        //We evicted some pages, should probably tell the
+                        //Eviction algorithm to update-itself.
+
+                        this.PageCacheAlgorithm.externalEviction( pageRef, new PageData( pageRef ).withLastUsage( System.nanoTime()));
                         clearEvictorException();
                         pageCountToEvict--;
                         addFreePageToFreelist( pageRef );
