@@ -492,4 +492,20 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         }
 
     }
+
+    @Override
+    public void externalEviction (long pageRef, PageData pageData)
+    {
+
+        synchronized ( this.dataPageList)
+        {
+            if ( this.dataPageList.exists( pageRef ))
+            {
+                this.dataPageList.removePage( pageRef );
+            }
+        }
+
+        return;
+
+    }
 }

@@ -37,6 +37,20 @@ public interface PageCacheAlgorithm
      */
     long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException;
 
+    /** Notify the algorithm of a pin event and include some usful data such as the last usage time.
+     *
+     * @param pageRef
+     * @param pageData
+     */
     void notifyPin( long pageRef, PageData pageData);
+
+    /** Notify the algorithm that we've evicted the page through some means
+     * other than using it. Therefore it needs to update and internal references to
+     * this given page.
+     *
+     * @param pageRef
+     * @param pageData
+     */
+    void externalEviction( long pageRef, PageData pageData);
 }
 
