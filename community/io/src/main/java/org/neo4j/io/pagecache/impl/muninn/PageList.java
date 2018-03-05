@@ -125,6 +125,12 @@ public class PageList
     private final PageCacheAlgorithm pageCacheAlgorithm;
 
     PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
+             long victimPageAddress, long bufferAlignment)
+    {
+        this( pageCount, cachePageSize, memoryAllocator, swappers, victimPageAddress, bufferAlignment, null);
+    }
+
+    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
              long victimPageAddress, long bufferAlignment, PageCacheAlgorithm pageCacheAlgorithm)
     {
         this.pageCount = pageCount;
@@ -135,22 +141,17 @@ public class PageList
         long bytes = ((long) pageCount) * META_DATA_BYTES_PER_PAGE;
         this.baseAddress = memoryAllocator.allocateAligned( bytes, Long.BYTES );
         this.bufferAlignment = bufferAlignment;
-        this.pageCacheAlgorithm = pageCacheAlgorithm;
-        clearMemory( baseAddress, pageCount );
-    }
 
-    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
-             long victimPageAddress, long bufferAlignment)
-    {
-        this.pageCount = pageCount;
-        this.cachePageSize = cachePageSize;
-        this.memoryAllocator = memoryAllocator;
-        this.swappers = swappers;
-        this.victimPageAddress = victimPageAddress;
-        long bytes = ((long) pageCount) * META_DATA_BYTES_PER_PAGE;
-        this.baseAddress = memoryAllocator.allocateAligned( bytes, Long.BYTES );
-        this.bufferAlignment = bufferAlignment;
-        this.pageCacheAlgorithm = null;
+        //If we're starting a page list without a MunninnPageCache, we won't have an algorithm (i.e tests).
+        //So pick a default
+        if (pageCacheAlgorithm == null) {
+            this.pageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU(500);
+        }
+        else
+        {
+            this.pageCacheAlgorithm = pageCacheAlgorithm;
+        }
+
         clearMemory( baseAddress, pageCount );
     }
 
