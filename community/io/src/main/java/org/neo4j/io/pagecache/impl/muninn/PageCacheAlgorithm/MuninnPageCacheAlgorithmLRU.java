@@ -39,6 +39,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
      */
     class doubleLinkedPageList
     {
+        /* TODO Maybe we should move this into its own class, we might need it for other algorithms. */
 
         /** Page. Store many of these */
         class Page
@@ -414,14 +415,14 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
         boolean evicted = false;
         int iterations = 0;
-        long evictionCandidate = this.dataPageList.tail.pageRef;
         int pageCount = pages.getPageCount();
-        doubleLinkedPageList.Page evictionCandidatePage = this.dataPageList.tail;
+        doubleLinkedPageList.Page evictionCandidatePage;
+        long evictionCandidate;
 
         synchronized (this.dataPageList) {
-            evictionCandidate = this.dataPageList.tail.pageRef;
             pageCount = pages.getPageCount();
             evictionCandidatePage = this.dataPageList.tail;
+            evictionCandidate = evictionCandidatePage.pageRef;
 
             try {
 
