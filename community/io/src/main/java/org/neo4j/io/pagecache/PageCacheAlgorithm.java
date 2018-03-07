@@ -18,7 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package org.neo4j.io.pagecache;
-
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
@@ -42,7 +41,7 @@ public interface PageCacheAlgorithm
      * @param pageRef
      * @param pageData
      */
-    void notifyPin( long pageRef, PageData pageData);
+    void notifyPin( long pageRef, PageData pageData );
 
     /** Notify the algorithm that we've evicted the page through some means
      * other than using it. Therefore it needs to update and internal references to
@@ -51,6 +50,6 @@ public interface PageCacheAlgorithm
      * @param pageRef
      * @param pageData
      */
-    void externalEviction( long pageRef, PageData pageData);
+    void externalEviction( long pageRef, PageData pageData );
 }
 

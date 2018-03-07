@@ -124,14 +124,14 @@ public class PageList
     private final long bufferAlignment;
     private final PageCacheAlgorithm pageCacheAlgorithm;
 
-    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
-             long victimPageAddress, long bufferAlignment)
+    PageList( int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
+             long victimPageAddress, long bufferAlignment )
     {
-        this( pageCount, cachePageSize, memoryAllocator, swappers, victimPageAddress, bufferAlignment, null);
+        this( pageCount, cachePageSize, memoryAllocator, swappers, victimPageAddress, bufferAlignment, null );
     }
 
-    PageList(int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
-             long victimPageAddress, long bufferAlignment, PageCacheAlgorithm pageCacheAlgorithm)
+    PageList( int pageCount, int cachePageSize, MemoryAllocator memoryAllocator, SwapperSet swappers,
+             long victimPageAddress, long bufferAlignment, PageCacheAlgorithm pageCacheAlgorithm )
     {
         this.pageCount = pageCount;
         this.cachePageSize = cachePageSize;
@@ -144,8 +144,9 @@ public class PageList
 
         //If we're starting a page list without a MunninnPageCache, we won't have an algorithm (i.e tests).
         //So pick a default
-        if (pageCacheAlgorithm == null) {
-            this.pageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU(500);
+        if ( pageCacheAlgorithm == null )
+        {
+            this.pageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU( 500 );
         }
         else
         {
@@ -267,7 +268,7 @@ public class PageList
         return pageRef + OFFSET_USAGE_COUNTER;
     }
 
-    private long offRecency (long pageRef )
+    private long offRecency( long pageRef )
     {
         return pageRef + OFFSET_RECENCY_COUNTER;
     }
@@ -376,7 +377,7 @@ public class PageList
         UnsafeUtil.putByteVolatile( offUsage( pageRef ), count );
     }
 
-    public void notifyCacheAlgorithm( long pageRef, PageData pageData)
+    public void notifyCacheAlgorithm( long pageRef, PageData pageData )
     {
         this.pageCacheAlgorithm.notifyPin( pageRef, pageData );
 

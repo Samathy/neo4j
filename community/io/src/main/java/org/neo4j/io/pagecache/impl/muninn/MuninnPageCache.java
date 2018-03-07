@@ -275,7 +275,7 @@ public class MuninnPageCache implements PageCache
         this.printExceptionsOnClose = true;
         long alignment = swapperFactory.getRequiredBufferAlignment();
         this.victimPage = VictimPageReference.getVictimPage( cachePageSize, memoryTracker );
-        this.pages = new PageList( maxPages, cachePageSize, memoryAllocator, new SwapperSet(), victimPage, alignment, this.PageCacheAlgorithm);
+        this.pages = new PageList( maxPages, cachePageSize, memoryAllocator, new SwapperSet(), victimPage, alignment, this.PageCacheAlgorithm );
 
         setFreelistHead( new AtomicInteger() );
     }

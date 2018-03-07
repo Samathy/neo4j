@@ -1,5 +1,23 @@
+/*
+ * Copyright (c) 2002-2018 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
-
 
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageData;
@@ -32,7 +50,6 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
     // it being the same across all instances is a side effect that is
     // probably okay.
 
-
     /** Mirrors the actual page list, but just stores metadata about pages and is sorted */
     doubleLinkedPageMetaDataList dataPageList =  new doubleLinkedPageMetaDataList( );
 
@@ -47,7 +64,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         resetReferenceTime();
     }
 
-    public long cooperativlyEvict ( PageFaultEvent faultEvent, PageList pages) throws IOException
+    public long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException
     {
 
         boolean evicted = false;
@@ -56,50 +73,58 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         doubleLinkedPageMetaDataList.Page evictionCandidatePage;
         long evictionCandidate;
 
-        synchronized (this.dataPageList) {
+        synchronized ( this.dataPageList )
+        {
             pageCount = pages.getPageCount();
             evictionCandidatePage = this.dataPageList.tail;
             evictionCandidate = evictionCandidatePage.pageRef;
 
-            try {
-
-                if (pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate)) {
+            try
+            {
+                if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
+                {
                     evicted = pages.tryEvict(evictionCandidate, faultEvent);
                 }
 
-                while (!evicted ) {
-                    if ( iterations >= this.cooperativeEvictionLiveLockThreshold)
+                while ( !evicted )
+                {
+                    if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
                     {
                         throw cooperativeEvictionLiveLock();
                     }
-                    if (evictionCandidatePage.last != null) {
+                    if ( evictionCandidatePage.last != null )
+                    {
                         evictionCandidatePage = evictionCandidatePage.last;
                         evictionCandidate = evictionCandidatePage.pageRef;
                     }
 
-                    if (pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate)) {
+                    if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
+                    {
                         evicted = pages.tryEvict(evictionCandidate, faultEvent);
                     }
 
                     iterations++;
                 }
 
-            } catch (Exception e) {
+            }
+            catch ( Exception e )
+            {
                 throw e;
             }
 
-            if (evicted) {
-                this.dataPageList.removePage(evictionCandidatePage.pageRef);
+            if ( evicted )
+            {
+                this.dataPageList.removePage( evictionCandidatePage.pageRef );
             }
 
-            if (!evicted) {
+            if ( !evicted )
+            {
                 throw cooperativeEvictionLiveLock();
             }
 
             return evictionCandidate;
         }
     }
-
 
     private CacheLiveLockException cooperativeEvictionLiveLock()
     {
@@ -117,33 +142,33 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
     }
 
     @Override
-    public void notifyPin(long pageRef, PageData pageData)
+    public void notifyPin( long pageRef, PageData pageData )
     {
-        synchronized ( this.dataPageList) {
-            if (!this.dataPageList.exists(pageRef)) {
-                this.dataPageList.addPageFront(pageRef, pageData);
+        synchronized ( this.dataPageList )
+        {
+            if ( !this.dataPageList.exists( pageRef ) )
+            {
+                this.dataPageList.addPageFront( pageRef, pageData );
                 return;
-            } else if (this.dataPageList.exists(pageRef)) {
-                this.dataPageList.setPageDataAndMoveToHead(pageRef, pageData);
+            }
+            else if ( this.dataPageList.exists( pageRef ) )
+            {
+                this.dataPageList.setPageDataAndMoveToHead( pageRef, pageData );
                 return;
             }
         }
-
     }
 
     @Override
-    public void externalEviction (long pageRef, PageData pageData)
+    public void externalEviction( long pageRef, PageData pageData )
     {
-
-        synchronized ( this.dataPageList)
+        synchronized ( this.dataPageList )
         {
-            if ( this.dataPageList.exists( pageRef ))
+            if ( this.dataPageList.exists( pageRef ) )
             {
                 this.dataPageList.removePage( pageRef );
             }
         }
-
         return;
-
     }
 }
