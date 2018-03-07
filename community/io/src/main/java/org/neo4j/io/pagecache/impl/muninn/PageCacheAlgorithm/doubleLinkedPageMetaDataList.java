@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2002-2018 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 import org.neo4j.io.pagecache.PageData;
@@ -9,8 +28,8 @@ import static java.lang.String.format;
  * what is probably the oldest
  * the oldest page.
  */
-public class doubleLinkedPageMetaDataList {
-
+public class doubleLinkedPageMetaDataList
+{
         /** Page. Store many of these */
         class Page
         {
@@ -20,7 +39,7 @@ public class doubleLinkedPageMetaDataList {
             PageData pageData;
             long pageRef;
 
-            public Page( long pageRef, PageData pageData)
+            Page( long pageRef, PageData pageData )
             {
 
                 this.last = null;
@@ -31,16 +50,18 @@ public class doubleLinkedPageMetaDataList {
 
         }
 
-        Page head = null;
-        Page tail = null;
+        Page head;
+        Page tail;
 
-        public doubleLinkedPageMetaDataList ()
+        /* Blank constructor needed if we want to have a page list but don't start it with any pages. */
+        public doubleLinkedPageMetaDataList( )
         {
+
         }
 
-        public doubleLinkedPageMetaDataList (long pageRef, PageData pageData)
+        public doubleLinkedPageMetaDataList( long pageRef, PageData pageData )
         {
-            this.head = new Page ( pageRef, pageData);
+            this.head = new Page( pageRef, pageData );
             this.tail = this.head;
 
         }
@@ -51,26 +72,32 @@ public class doubleLinkedPageMetaDataList {
          * @return
          * @throws IndexOutOfBoundsException
          */
-        private synchronized Page findPage (long pageRef ) throws IndexOutOfBoundsException {
+        private synchronized Page findPage( long pageRef ) throws IndexOutOfBoundsException
+        {
             Page page;
 
             int iterations = 0;
 
-            try {
-                if (this.head != null) {
+            try
+            {
+                if ( this.head != null )
+                {
                     page = this.head;
-                } else {
-                    throw noSuchPage(pageRef);
+                }
+                else
+                {
+                    throw noSuchPage( pageRef );
                 }
 
-
-                while (page.next != null) {
-
-                    if (page.pageRef == pageRef) {
+                while ( page.next != null )
+                {
+                    if ( page.pageRef == pageRef )
+                    {
                         break;
                     }
 
-                    if (page.next != null) {
+                    if ( page.next != null )
+                    {
                         page = page.next;
                     }
 
@@ -78,12 +105,13 @@ public class doubleLinkedPageMetaDataList {
 
                 }
 
-                if (page.pageRef != pageRef) {
-                    throw noSuchPage(pageRef);
+                if ( page.pageRef != pageRef )
+                {
+                    throw noSuchPage( pageRef );
                 }
             }
 
-            catch (Exception e)
+            catch ( Exception e )
             {
                 throw e;
             }
@@ -92,14 +120,14 @@ public class doubleLinkedPageMetaDataList {
 
         }
 
-        synchronized boolean exists ( long pageRef )
+        synchronized boolean exists( long pageRef )
         {
             Page page = null;
             try
             {
-                page = findPage(pageRef);
+                page = findPage( pageRef );
             }
-            catch  (Exception e)
+            catch ( Exception e )
             {
                 return false;
             }
@@ -114,9 +142,9 @@ public class doubleLinkedPageMetaDataList {
          */
         public synchronized Page addPageFront( long pageRef, PageData pageData )
         {
-            Page newPage = new Page( pageRef, pageData);
+            Page newPage = new Page( pageRef, pageData );
 
-            if (this.head != null)
+            if ( this.head != null )
             {
                 newPage.next = this.head;
                 this.head.last = newPage;
@@ -124,7 +152,7 @@ public class doubleLinkedPageMetaDataList {
                 this.head = newPage;
             }
 
-            if (this.head == null)
+            if ( this.head == null )
             {
                 this.head = newPage;
                 this.tail = newPage;
@@ -143,25 +171,27 @@ public class doubleLinkedPageMetaDataList {
 
             try
             {
-                page = findPage (pageRef);
+                page = findPage( pageRef );
             }
-            catch (Exception e)
+            catch ( Exception e )
             {
                 throw e;
             }
 
-
             //page should be this.head
-            if (page.last == null) {
-                if (page != this.head) {
-                    System.out.println("Oppsie! Is not head!");
+            if ( page.last == null )
+            {
+                if ( page != this.head )
+                {
+                    System.out.println( "Oppsie! Is not head!" );
                 }
 
                 return page;
             }
 
             //Page is in the middle
-            else if (page.last != null && page.next != null) {
+            else if ( page.last != null && page.next != null )
+            {
                 page.last.next = page.next;
                 page.next.last = page.last;
 
@@ -171,13 +201,12 @@ public class doubleLinkedPageMetaDataList {
                 this.head.last = page;
                 this.head = page;
 
-
                 return page;
             }
 
             //Page is at the end
-            else if ( page.next == null && page.last != null) {
-
+            else if ( page.next == null && page.last != null )
+            {
                 page.last.next = null;
                 this.tail = page.last;
 
@@ -186,10 +215,8 @@ public class doubleLinkedPageMetaDataList {
                 this.head = page;
                 page.last = null;
 
-
                 return page;
             }
-
 
             return page;
         }
@@ -200,29 +227,29 @@ public class doubleLinkedPageMetaDataList {
             Page page = null;
             try
             {
-                page = findPage(pageRef);
+                page = findPage( pageRef );
             }
-            catch (Exception e)
+            catch ( Exception e )
             {
                 throw e;
             }
 
             //If we have both a next and a last, remove ourselves
-            if (page.last != null && page.next != null)
+            if ( page.last != null && page.next != null )
             {
                 page.last.next = page.next;
                 page.next.last = page.last;
             }
 
             //We're the tail, probably.
-            if ( page.last != null  && page.next == null)
+            if ( page.last != null  && page.next == null )
             {
                 page.last.next = null;
                 this.tail = page.last;
             }
 
             //We're the head, probably.
-            if (page.last == null && page.next != null)
+            if ( page.last == null && page.next != null )
             {
                 page.next.last = null;
                 this.head = page.next;
@@ -230,99 +257,111 @@ public class doubleLinkedPageMetaDataList {
 
         }
 
-        public synchronized void setPageData ( long pageRef, PageData pageData )
+        public synchronized void setPageData( long pageRef, PageData pageData )
         {
             Page page = null;
-            try {
-                page = findPage(pageRef);
-            } catch (Exception e) {
+            try
+            {
+                page = findPage( pageRef );
+            }
+            catch ( Exception e )
+            {
                 throw e;
             }
 
             page.pageData = pageData;
         }
 
-        public synchronized void setPageDataAndMoveToHead( long pageRef, PageData pageData)
+        public synchronized void setPageDataAndMoveToHead( long pageRef, PageData pageData )
         {
             try
             {
-                setPageData(pageRef, pageData);
-
+                setPageData( pageRef, pageData );
                 moveToFront( pageRef );
 
             }
-            catch (Exception e)
+            catch ( Exception e )
             {
                 throw e;
             }
 
         }
 
-        public synchronized boolean verifyLinkedList () throws IllegalStateException
+        public synchronized boolean verifyLinkedList() throws IllegalStateException
         {
             Page page = null;
 
-            if (this.head != null) {
-                page =this.head;
+            if ( this.head != null )
+            {
+                page = this.head;
             }
-            else {
-                throw linkedListErrorState("HEAD is null");
+            else
+            {
+                throw linkedListErrorState( "HEAD is null" );
             }
 
-            if (page.last != null)
+            if ( page.last != null )
             {
-                throw linkedListErrorState("HEAD.last != null");
+                throw linkedListErrorState( "HEAD.last != null" );
             }
 
-            if (page.next == null)
+            if ( page.next == null )
             {
-                if (page != this.tail) {
-                    throw linkedListErrorState("HEAD.next == null");
+                if ( page != this.tail )
+                {
+                    throw linkedListErrorState( "HEAD.next == null" );
                 }
             }
 
-            while ( page.next != null) {
+            while ( page.next != null )
+            {
                 Page lastPage = page;
                 page = page.next;
 
-                if (page.last != lastPage) {
-                    throw linkedListErrorState(format("Last page marker is in correct for page %d", page.pageRef));
+                if ( page.last != lastPage )
+                {
+                    throw linkedListErrorState( format( "Last page marker is in correct for page %d", page.pageRef ) );
                 }
 
-                if (page.next != null) {
+                if ( page.next != null )
+                {
                     continue;
-                } else if (page.next == null && page == this.tail) {
+                }
+                else if ( page.next == null && page == this.tail )
+                {
                     break;
-                } else if (page.next == null && page.next != this.tail) {
-                    throw linkedListErrorState("page.next == null BUT page != this.tail");
-                } else if (page.next != null && page == this.tail) {
-                    throw linkedListErrorState("Page.next != null BUT page == this.tail");
+                }
+                else if ( page.next == null && page.next != this.tail )
+                {
+                    throw linkedListErrorState( "page.next == null BUT page != this.tail" );
+                }
+                else if ( page.next != null && page == this.tail )
+                {
+                    throw linkedListErrorState( "Page.next != null BUT page == this.tail" );
                 }
 
             }
 
-            if (page == this.tail)
+            if ( page == this.tail )
             {
-                if (page.next != null)
+                if ( page.next != null )
                 {
-                    throw linkedListErrorState("Page.next is != null BUT page == this.tail");
+                    throw linkedListErrorState( "Page.next is != null BUT page == this.tail" );
                 }
             }
 
             return true;
         }
 
-        private IndexOutOfBoundsException noSuchPage(long pageRef )
+        private IndexOutOfBoundsException noSuchPage( long pageRef )
         {
-            String msg = format("Could not find page with page ID of %d", pageRef);
-            return new IndexOutOfBoundsException(msg);
+            String msg = format( "Could not find page with page ID of %d", pageRef );
+            return new IndexOutOfBoundsException( msg );
         }
 
-        private IllegalStateException linkedListErrorState (String errorMessage)
+        private IllegalStateException linkedListErrorState( String errorMessage )
         {
-            String msg = format (" Cache algorithm Linked List is in an error state: %s", errorMessage);
-            return new IllegalStateException( msg);
+            String msg = format( " Cache algorithm Linked List is in an error state: %s", errorMessage );
+            return new IllegalStateException( msg );
         }
-
-
 }
