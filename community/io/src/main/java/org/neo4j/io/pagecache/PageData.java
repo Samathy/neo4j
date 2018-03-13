@@ -24,9 +24,9 @@ package org.neo4j.io.pagecache;
  */
 public class PageData
 {
-    long pageRef;
-    long faultInTime;
-    long lastUsageTime;
+    private long pageRef;
+    private long faultInTime;
+    private long lastUsageTime;
 
     public PageData( long pageRef )
     {
