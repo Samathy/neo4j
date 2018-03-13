@@ -44,5 +44,21 @@ public class PageData
         this.lastUsageTime = lastUsage;
         return this;
     }
+
+    public long getFaultInTime()
+    {
+        return this.faultInTime;
+    }
+
+    public long getLastUsageTime()
+    {
+        return this.lastUsageTime;
+    }
+
+    public long getPageRef()
+    {
+        return this.getPageRef();
+    }
+
 }
 
