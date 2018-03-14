@@ -19,9 +19,11 @@
  */
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
+import org.neo4j.io.pagecache.PageCache;
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
+import org.neo4j.io.pagecache.impl.muninn.MuninnPageCache;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
@@ -36,6 +38,10 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 {
 
     private int cooperativeEvictionLiveLockThreshold;
+
+    // Needs the instance of the page cache we're in
+    // So we can access it's pages.
+    private MuninnPageCache pageCache;
 
     /** The local reference time.
      * This time is used to compare page entry times
@@ -58,8 +64,9 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         referenceTime = System.nanoTime();
     }
 
-    public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold )
+    public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
     {
+        this.pageCache = pageCache;
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
         resetReferenceTime();
     }
@@ -81,6 +88,12 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
             try
             {
+                this.pageCache.assertHealthy();
+                if ( this.pageCache.getFreelistHead() != null )
+                {
+                    return 0;
+                }
+
                 if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                 {
                     evicted = pages.tryEvict(evictionCandidate, faultEvent);
@@ -88,6 +101,12 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
                 while ( !evicted )
                 {
+                    this.pageCache.assertHealthy();
+                    if ( this.pageCache.getFreelistHead() != null )
+                    {
+                        return 0;
+                    }
+
                     if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
                     {
                         throw cooperativeEvictionLiveLock();

@@ -194,7 +194,7 @@ public class MuninnPageCache implements PageCache
     private boolean printExceptionsOnClose;
 
     // Instance of our page cache eviction algorithm
-    private MuninnPageCacheAlgorithmLRU PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU( this.cooperativeEvictionLiveLockThreshold );
+    private MuninnPageCacheAlgorithmLRU PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU( this.cooperativeEvictionLiveLockThreshold, this);
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.
@@ -645,7 +645,7 @@ public class MuninnPageCache implements PageCache
         super.finalize();
     }
 
-    private void assertHealthy() throws IOException
+    public void assertHealthy() throws IOException
     {
         assertNotClosed();
         IOException exception = evictorException;
@@ -754,11 +754,6 @@ public class MuninnPageCache implements PageCache
 
     private long cooperativelyEvict( PageFaultEvent faultEvent ) throws IOException
     {
-            assertHealthy();
-            if ( getFreelistHead() != null )
-            {
-                return 0;
-            }
 
             try
             {
@@ -809,7 +804,7 @@ public class MuninnPageCache implements PageCache
         evictorParked = false;
     }
 
-    private Object getFreelistHead()
+    public Object getFreelistHead()
     {
         return UnsafeUtil.getObjectVolatile( this, freelistOffset );
     }

@@ -21,9 +21,12 @@ package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
+
+import org.neo4j.io.pagecache.PageCache;
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
+import org.neo4j.io.pagecache.impl.muninn.MuninnPageCache;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
@@ -34,8 +37,13 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
 {
     private int cooperativeEvictionLiveLockThreshold;
 
-    public MuninnPageCacheAlgorithmCLOCK( int cooperativeEvictionLiveLockThreshold )
+    // Needs the instance of the page cache we're in
+    // So we can access it's pages.
+    private MuninnPageCache pageCache;
+
+    public MuninnPageCacheAlgorithmCLOCK(int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
     {
+        this.pageCache = pageCache;
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
     }
 
@@ -52,6 +60,13 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
         boolean evicted = false;
         do
         {
+
+            this.pageCache.assertHealthy();
+            if ( this.pageCache.getFreelistHead() != null )
+            {
+                return 0;
+            }
+
             if ( clockArm == pageCount )
             {
                 if ( iterations == this.cooperativeEvictionLiveLockThreshold )

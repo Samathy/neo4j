@@ -141,17 +141,7 @@ public class PageList
         long bytes = ((long) pageCount) * META_DATA_BYTES_PER_PAGE;
         this.baseAddress = memoryAllocator.allocateAligned( bytes, Long.BYTES );
         this.bufferAlignment = bufferAlignment;
-
-        //If we're starting a page list without a MunninnPageCache, we won't have an algorithm (i.e tests).
-        //So pick a default
-        if ( pageCacheAlgorithm == null )
-        {
-            this.pageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU( 500 );
-        }
-        else
-        {
-            this.pageCacheAlgorithm = pageCacheAlgorithm;
-        }
+        this.pageCacheAlgorithm = pageCacheAlgorithm;
 
         clearMemory( baseAddress, pageCount );
     }
