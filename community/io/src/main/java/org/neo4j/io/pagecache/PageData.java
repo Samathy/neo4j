@@ -19,6 +19,8 @@
  */
 package org.neo4j.io.pagecache;
 
+import java.util.ArrayList;
+
 /** Includes interesting data about a page to be passed to the
  * algorithm upon Pinning or faulting in.
  */
@@ -27,15 +29,25 @@ public class PageData
     private long pageRef;
     private long faultInTime;
     private long lastUsageTime;
+    private long kSize = 1;
+    long accessTimes[];
 
     public PageData( long pageRef )
     {
         this.pageRef = pageRef;
     }
 
+    public PageData ( long pageRef, int kSize)
+    {
+        this.accessTimes = new long [kSize];
+        this.kSize = kSize;
+        this.pageRef = pageRef;
+    }
+
     public PageData withFaultInTime( long faultInTime )
     {
         this.faultInTime = faultInTime;
+        this.lastUsageTime = faultInTime;
         return this;
     }
 
@@ -55,9 +67,29 @@ public class PageData
         return this.lastUsageTime;
     }
 
+    public long getHistoryTime( int k ) throws IndexOutOfBoundsException
+    {
+        //TODO should be protected with an if
+        return this.accessTimes[k-1];
+    }
+
+    public void setAccessTime(int element, long time)
+    {
+            this.accessTimes[element] = time;
+    }
+
     public long getPageRef()
     {
         return this.getPageRef();
+    }
+    public PageData withKSize( int kSize )
+    {
+        //Constructor for LRU-k algorithm where we store the last k
+        //reference times of this page
+        //This should only be called upon new page creation, really.
+        this.accessTimes = new long [kSize];
+
+        return this;
     }
 
 }

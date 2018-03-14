@@ -39,6 +39,7 @@ import org.neo4j.io.mem.MemoryAllocator;
 import org.neo4j.io.pagecache.*;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRUK;
 import org.neo4j.io.pagecache.tracing.EvictionRunEvent;
 import org.neo4j.io.pagecache.tracing.FlushEventOpportunity;
 import org.neo4j.io.pagecache.tracing.MajorFlushEvent;
@@ -194,7 +195,7 @@ public class MuninnPageCache implements PageCache
     private boolean printExceptionsOnClose;
 
     // Instance of our page cache eviction algorithm
-    private MuninnPageCacheAlgorithmLRU PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRU( this.cooperativeEvictionLiveLockThreshold, this);
+    private MuninnPageCacheAlgorithmLRUK PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRUK( this.cooperativeEvictionLiveLockThreshold, this, 2 );
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.

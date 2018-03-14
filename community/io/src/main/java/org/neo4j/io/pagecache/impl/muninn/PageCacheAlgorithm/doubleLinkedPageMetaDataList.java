@@ -72,7 +72,7 @@ public class doubleLinkedPageMetaDataList
          * @return
          * @throws IndexOutOfBoundsException
          */
-        private synchronized Page findPage( long pageRef ) throws IndexOutOfBoundsException
+        public synchronized Page findPage( long pageRef ) throws IndexOutOfBoundsException
         {
             Page page;
 
@@ -142,7 +142,7 @@ public class doubleLinkedPageMetaDataList
          */
         public synchronized Page addPageFront( long pageRef, PageData pageData )
         {
-            Page newPage = new Page( pageRef, pageData );
+            Page newPage = new Page( pageRef, pageData);
 
             if ( this.head != null )
             {
