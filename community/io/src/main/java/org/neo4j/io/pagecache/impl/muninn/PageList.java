@@ -369,7 +369,11 @@ public class PageList
 
     public void notifyCacheAlgorithm( long pageRef, PageData pageData )
     {
-        this.pageCacheAlgorithm.notifyPin( pageRef, pageData );
+        //Of this var == null then we're probably running a test, which is fine.
+        if (this.pageCacheAlgorithm != null)
+        {
+            this.pageCacheAlgorithm.notifyPin(pageRef, pageData);
+        }
 
         return;
     }
