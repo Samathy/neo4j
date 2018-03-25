@@ -27,6 +27,7 @@ import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
 
 import java.io.IOException;
+import java.util.Vector;
 import java.util.concurrent.TimeUnit;
 
 public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
@@ -38,9 +39,11 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
     // So we can access it's pages.
     private MuninnPageCache pageCache;
 
-    private int kSize = 1;
+    private int kSize = 2;
 
-    private long correlatedReferenceTimeout = 100000000;
+    private long correlatedReferenceTimeout = 3;
+
+    private int referencesT = 0;
 
     public static long referenceTime;
 
@@ -62,82 +65,89 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
     }
 
 
-    public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages ) throws IOException {
+    public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages ) throws IOException
+    {
 
         boolean evicted = false;
         int iterations = 0;
         doubleLinkedPageMetaDataList.Page evictionCandidatePage = null;
 
-        long t = System.nanoTime();
-        long minEvictionTime = t;
+        long t = 0;
+        long minEvictionTime = 0;
 
+        Vector tried = new Vector();
+        doubleLinkedPageMetaDataList.Page page = null;
 
-        synchronized ( this.dataPageList )
-        {
-            doubleLinkedPageMetaDataList.Page page = null;
+            t = this.referencesT;
+            minEvictionTime = t;
 
-            while (!evicted )
+            while (!evicted)
             {
                 this.pageCache.assertHealthy();
-                if ( this.pageCache.getFreelistHead() != null )
+                if (this.pageCache.getFreelistHead() != null)
                 {
                     return 0;
                 }
 
-                if (iterations >= 500)
+                if (iterations >= this.cooperativeEvictionLiveLockThreshold)
                 {
                     throw cooperativeEvictionLiveLock();
                 }
 
                 do
                 {
-                    if (page == null)
+                    this.pageCache.assertHealthy();
+                    if (this.pageCache.getFreelistHead() != null)
                     {
-                        page = this.dataPageList.head;
+                        return 0;
                     }
-                    else if ( page.next!= null )
+
+                    if (page == null || page.last == null)
                     {
-                        page = page.next;
-                    }
-                    else
+                        page = this.dataPageList.tail;
+                    } else if (page.last != null)
+                    {
+                        page = page.last;
+                    } else if (page.last == null)
                     {
                         break;
                     }
 
-                    System.out.println(t - page.pageData.getLastUsageTime());
-                    System.out.println( page.pageData.getHistoryTime(this.kSize) < minEvictionTime);
-
                     if (t - page.pageData.getLastUsageTime() > this.correlatedReferenceTimeout &&
-                            page.pageData.getHistoryTime(this.kSize) < minEvictionTime)
+                            page.pageData.getHistoryTime(this.kSize) <= minEvictionTime &&
+                            !tried.contains(page.pageRef))
                     {
                         evictionCandidatePage = page;
-                        minEvictionTime = page.pageData.getHistoryTime(kSize);
+                        minEvictionTime = page.pageData.getHistoryTime(this.kSize);
                     }
 
-
-                } while (page.next != null);
+                }
+                while (page.last != null);
 
                 if (pages.isLoaded(evictionCandidatePage.pageRef) && pages.decrementUsage(evictionCandidatePage.pageRef))
                 {
                     evicted = pages.tryEvict(evictionCandidatePage.pageRef, faultEvent);
                 }
+                if (!evicted && !tried.contains(evictionCandidatePage.pageRef))
+                {
+                    tried.add(evictionCandidatePage.pageRef);
+                }
 
                 iterations++;
             }
 
-            if (evicted)
-            {
-                this.dataPageList.removePage(evictionCandidatePage.pageRef);
-            }
-
-            if (!evicted)
-            {
-                throw cooperativeEvictionLiveLock();
-            }
-
-            return evictionCandidatePage.pageRef;
-
+        if (evicted)
+        {
+            this.dataPageList.removePage(evictionCandidatePage.pageRef);
         }
+
+        if (!evicted)
+        {
+            throw cooperativeEvictionLiveLock();
+        }
+
+        return evictionCandidatePage.pageRef;
+
     }
 
     private CacheLiveLockException cooperativeEvictionLiveLock()
@@ -158,56 +168,64 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
     @Override
     public void notifyPin( long pageRef, PageData pageData )
     {
-        synchronized ( this.dataPageList )
-        {
-            if ( !this.dataPageList.exists( pageRef ) )
+            synchronized (this)
             {
-                //Make sure we set the kSize!
-                pageData.withKSize( this.kSize ).setAccessTime(0, pageData.getLastUsageTime());
-                this.dataPageList.addPageFront( pageRef, pageData );
-                return;
+                this.referencesT++;
             }
-            else if ( this.dataPageList.exists( pageRef ) )
+
+            int t = this.referencesT;
+
+            synchronized ( this.dataPageList)
             {
-                doubleLinkedPageMetaDataList.Page page = this.dataPageList.findPage( pageRef );
-
-                //If new, uncorrelated reference.
-                if (System.nanoTime() - page.pageData.getLastUsageTime() >
-                        this.correlatedReferenceTimeout)
+                if (!this.dataPageList.exists(pageRef))
                 {
+                    PageData newPageData = new PageData(pageRef, this.kSize);
 
-                   long correlPeriodOfRefdPage = page.pageData.getLastUsageTime() - page.pageData.getHistoryTime( 1);
-                   System.out.println("Correl Period of refd page"+correlPeriodOfRefdPage);
+                    //In the actual LRU-k pseudocode they use a for loop to
+                    // zero out the history time. We omit that here.
 
-                   for (int i = 2; i <= this.kSize; i++)
-                   {
-                       page.pageData.setAccessTime(i-1, page.pageData.getHistoryTime( i-1) + correlPeriodOfRefdPage);
-                       System.out.println("***");
-                   }
+                    //Set last usage time and first history element to fault in time.
+                    newPageData.setAccessTime(1, t);
+                    newPageData.setLastUsageTime(t);
 
-                   System.out.println("**");
-                   //Add that last reference to the history times if we're not in correlated ref time.
-                   page.pageData.setAccessTime ( 0, pageData.getLastUsageTime() );
-                    System.out.println("***");
+                    this.dataPageList.addPageFront(pageRef, newPageData);
+                    return;
+                } else if (this.dataPageList.exists(pageRef))
+                {
+                    doubleLinkedPageMetaDataList.Page page = this.dataPageList.findPage(pageRef);
 
+                    //If new, uncorrelated reference.
+                    if ((t - page.pageData.getLastUsageTime()) >
+                            this.correlatedReferenceTimeout)
+                    {
+
+                        long correlPeriodOfRefdPage = page.pageData.getLastUsageTime() - page.pageData.getHistoryTime(1);
+
+                        for (int i = 2; i <= this.kSize; i++)
+                        {
+                            page.pageData.setAccessTime(i, page.pageData.getHistoryTime(i - 1) + correlPeriodOfRefdPage);
+                        }
+                        //Set the last access time in history and last access time.
+                        page.pageData.setAccessTime(1, t);
+                        page.pageData.setLastUsageTime(t);
+                        dataPageList.moveToFront(pageRef);
+                    } else
+                    {
+                        //If correlated reference, just set the last access time
+                        page.pageData.setLastUsageTime(t);
+                    }
+
+                    return;
                 }
-
-                //Else, if correlated reference, or done doing uncorrelated ref stuff.
-                this.dataPageList.setPageDataAndMoveToHead( pageRef, page.pageData );
-                return;
             }
         }
-    }
 
     @Override
     public void externalEviction( long pageRef, PageData pageData )
     {
-        synchronized ( this.dataPageList )
+        if ( this.dataPageList.exists( pageRef ) )
         {
-            if ( this.dataPageList.exists( pageRef ) )
-            {
-                this.dataPageList.removePage( pageRef );
-            }
+            this.dataPageList.removePage( pageRef );
         }
         return;
     }

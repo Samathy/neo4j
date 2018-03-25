@@ -19,8 +19,6 @@
  */
 package org.neo4j.io.pagecache;
 
-import java.util.ArrayList;
-
 /** Includes interesting data about a page to be passed to the
  * algorithm upon Pinning or faulting in.
  */
@@ -69,18 +67,47 @@ public class PageData
 
     public long getHistoryTime( int k ) throws IndexOutOfBoundsException
     {
+        if (this.accessTimes == null)
+        {
+            throw new IndexOutOfBoundsException();
+        }
+
+        if ( k-1 < 0 || k > accessTimes.length)
+        {
+            throw new IndexOutOfBoundsException();
+        }
+
+        if ( k == 1)
+        {
+            return this.lastUsageTime;
+        }
+
         //TODO should be protected with an if
-        return this.accessTimes[k-1];
+        return this.accessTimes[k - 1];
     }
 
-    public void setAccessTime(int element, long time)
+    public synchronized void setAccessTime(int element, long time)
     {
-            this.accessTimes[element] = time;
+            this.accessTimes[element-1] = time;
+    }
+
+    /** Sets last usage time of this page data
+     *
+     * IMPORTANT
+     * Differs from setAccessTime because this method
+     * does NOT also update the history variable.
+     * It is used in setting the last access time without setting the
+     * history variable.
+     * @param time
+     */
+    public synchronized void setLastUsageTime (long time)
+    {
+
     }
 
     public long getPageRef()
     {
-        return this.getPageRef();
+        return this.pageRef;
     }
     public PageData withKSize( int kSize )
     {
