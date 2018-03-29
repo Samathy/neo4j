@@ -53,6 +53,9 @@ public class doubleLinkedPageMetaDataList
         Page head;
         Page tail;
 
+        //The number of pages currently logged in this list.
+        private long size = 0;
+
         /* Blank constructor needed if we want to have a page list but don't start it with any pages. */
         public doubleLinkedPageMetaDataList( )
         {
@@ -64,6 +67,13 @@ public class doubleLinkedPageMetaDataList
             this.head = new Page( pageRef, pageData );
             this.tail = this.head;
 
+            this.size++;
+
+        }
+
+        public long size()
+        {
+            return this.size;
         }
 
         /** Find a given page in the list
@@ -157,6 +167,8 @@ public class doubleLinkedPageMetaDataList
                 this.head = newPage;
                 this.tail = newPage;
             }
+
+            this.size++;
 
             return newPage;
         }
@@ -254,6 +266,8 @@ public class doubleLinkedPageMetaDataList
                 page.next.last = null;
                 this.head = page.next;
             }
+
+            this.size--;
 
         }
 
