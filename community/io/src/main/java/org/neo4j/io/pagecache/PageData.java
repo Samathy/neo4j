@@ -28,7 +28,8 @@ public class PageData
     private long faultInTime;
     private long lastUsageTime;
     private long kSize = 1;
-    long accessTimes[];
+    long accessTimes[]; //Should be private
+    private long references;
 
     public PageData( long pageRef )
     {
