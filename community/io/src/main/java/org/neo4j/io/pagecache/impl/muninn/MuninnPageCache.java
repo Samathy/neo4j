@@ -38,6 +38,7 @@ import org.neo4j.io.fs.DefaultFileSystemAbstraction;
 import org.neo4j.io.fs.FileSystemAbstraction;
 import org.neo4j.io.mem.MemoryAllocator;
 import org.neo4j.io.pagecache.*;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithm2Q;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRUK;
@@ -198,7 +199,7 @@ public class MuninnPageCache implements PageCache
     private boolean printExceptionsOnClose;
 
     // Instance of our page cache eviction algorithm
-    private MuninnPageCacheAlgorithmLRUK PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRUK( this.cooperativeEvictionLiveLockThreshold, this, 2 );
+    private MuninnPageCacheAlgorithm2Q PageCacheAlgorithm = new MuninnPageCacheAlgorithm2Q( this.cooperativeEvictionLiveLockThreshold, this);
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.
@@ -234,6 +235,8 @@ public class MuninnPageCache implements PageCache
                 pageCacheTracer,
                 pageCursorTracerSupplier,
                 versionContextSupplier );
+
+        this.PageCacheAlgorithm.setNumberOfPages( maxPages );
     }
 
     /**
@@ -291,6 +294,8 @@ public class MuninnPageCache implements PageCache
         this.pages = new PageList( maxPages, cachePageSize, memoryAllocator, new SwapperSet(), victimPage, alignment, this.PageCacheAlgorithm );
 
         setFreelistHead( new AtomicInteger() );
+
+        this.PageCacheAlgorithm.setNumberOfPages( maxPages );
     }
 
     private static void verifyHacks()

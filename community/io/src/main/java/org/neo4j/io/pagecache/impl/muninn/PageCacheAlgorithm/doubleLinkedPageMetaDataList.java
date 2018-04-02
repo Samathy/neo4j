@@ -71,8 +71,12 @@ public class doubleLinkedPageMetaDataList
 
         }
 
-        public long size()
+        public synchronized long size()
         {
+            if (this.size < 0)
+            {
+                System.out.println("What the heck?! " +this.size);
+            }
             return this.size;
         }
 
