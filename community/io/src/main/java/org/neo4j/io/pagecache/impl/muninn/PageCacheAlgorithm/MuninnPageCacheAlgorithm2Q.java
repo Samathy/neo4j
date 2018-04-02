@@ -97,36 +97,88 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     /** Enters a page to the A1 list. **/
     private void a2Enter( long pageRef, PageData pageData)
     {
-        this.a1List.addPageFront( pageRef, pageData );
+        this.a2List.addPageFront( pageRef, pageData );
     }
 
     @Override
     public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages) throws IOException
     {
 
-        doubleLinkedPageMetaDataList.Page page = this.a1List.tail;
+        int iterations = 0;
+        doubleLinkedPageMetaDataList.Page page = null;
         boolean evicted = false;
 
-        while (!evicted)
+        if ( this.a1List.size() >= this.a2List.size())
         {
-            this.pageCache.assertHealthy();
-            if (this.pageCache.getFreelistHead() != null)
-            {
-                return 0;
+            synchronized ( this.a1List ) {
+                page = this.a1List.tail;
+                while (!evicted) {
+
+                    if (iterations > a1Size) {
+                        System.out.println("Excessive iteratons on a1 list");
+                    }
+
+                    this.pageCache.assertHealthy();
+                    if (this.pageCache.getFreelistHead() != null) {
+                        return 0;
+                    }
+
+
+                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef)) {
+                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                    }
+                    if (evicted) {
+                        break;
+                    }
+
+                    page = page.last;
+
+                    iterations++;
+                }
+
+                this.a1List.removePage(page.pageRef);
             }
-
-
-            if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef))
+        }
+        else
+        {
+            synchronized ( this.a2List )
             {
-                evicted = pages.tryEvict(page.pageRef, faultEvent);
-            }
-            if(evicted)
-            {    break;    }
 
-            page = page.last;
+                page = this.a2List.tail;
+                while (!evicted) {
+
+                    if (iterations > this.a2Size) {
+                        System.out.println("Excessive iteratons on a2 list");
+                    }
+
+                    this.pageCache.assertHealthy();
+                    if (this.pageCache.getFreelistHead() != null) {
+                        return 0;
+                    }
+
+
+                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef)) {
+                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                    }
+                    if (evicted) {
+                        break;
+                    }
+
+
+                    if (page.last == null) {
+                        System.out.println("Reached list HEAD");
+                        page = a2List.tail;
+                    } else {
+                        page = page.last;
+                    }
+                }
+
+                this.a2List.removePage(page.pageRef);
+                iterations++;
+            }
         }
 
-        this.a1List.removePage( page.pageRef );
+
 
         return page.pageRef;
     }
@@ -134,31 +186,33 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     @Override
     public void notifyPin(long pageRef, PageData pageData)
     {
-            if (!this.a1List.exists(pageRef) && !this.a2List.exists(pageRef))
+        synchronized ( this.a1List)
+        {
+            synchronized ( this.a2List )
             {
-                if (this.a1List.size() + 1 > this.a1Size)
+                if (!this.a1List.exists(pageRef) && !this.a2List.exists(pageRef))
                 {
-                    System.out.println("oopsie");
+                    if (this.a1List.size() + 1 > this.a1Size)
+                    {
+                    }
+                    this.a1Enter(pageRef, pageData);
+                } else if (this.a1List.exists(pageRef))
+                {
+                    if (this.a2List.size() + 1 > this.a2Size)
+                    {
+
+                    }
+
+                    this.a1List.removePage(pageRef);
+                    this.a2Enter(pageRef, pageData);
+
+                } else if (this.a2List.exists(pageRef))
+                {
+                    this.a2List.setPageDataAndMoveToHead(pageRef, pageData);
                 }
 
-                this.a1Enter(pageRef, pageData);
-            } else if (this.a1List.exists(pageRef))
-            {
-                if (this.a2List.size() + 1 > this.a2Size)
-                {
-
-                }
-
-                a2Enter(pageRef, pageData);
-
-            }
-
-            if (this.a2List.exists(pageRef))
-            {
-                this.a2List.setPageDataAndMoveToHead(pageRef, pageData);
-            }
-
-        return;
+                return;
+            }}
 
     }
 
@@ -166,15 +220,20 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     public void externalEviction(long pageRef, PageData pageData)
     {
 
-        if ( this.a1List.exists( pageRef ))
+        synchronized ( this.a1List )
         {
-            this.a1List.removePage( pageRef );
+            if (this.a1List.exists(pageRef))
+            {
+                this.a1List.removePage(pageRef);
+            }
         }
-
-        else if (this.a2List.exists( pageRef ))
-        {
-            this.a2List.removePage( pageRef );
-        }
+       synchronized ( this.a2List )
+       {
+           if (this.a2List.exists(pageRef))
+           {
+               this.a2List.removePage(pageRef);
+           }
+       }
 
 
     }
