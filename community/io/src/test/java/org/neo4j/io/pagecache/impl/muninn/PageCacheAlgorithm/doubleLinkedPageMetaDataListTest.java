@@ -57,7 +57,7 @@ public class doubleLinkedPageMetaDataListTest
                         .withFaultInTime( System.nanoTime() )
         );
 
-        for ( int reference = 0; reference == listLength; reference++ )
+        for ( int reference = 0; reference < listLength; reference++ )
         {
             dlpl.addPageFront( reference, new PageData( reference ) );
         }
@@ -92,7 +92,7 @@ public class doubleLinkedPageMetaDataListTest
                         .withFaultInTime( System.nanoTime() )
         );
 
-        for ( int reference = 0; reference == listLength; reference++ )
+        for ( int reference = 0; reference < listLength; reference++ )
         {
             dlpl.addPageFront( reference, new PageData( reference ) );
         }
@@ -139,6 +139,30 @@ public class doubleLinkedPageMetaDataListTest
 
         dlpl.verifyLinkedList();
     }
+    @Test
+    public void testSizeCount() throws AssertionError
+    {
+        int listLength = 300;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList();
+
+        for ( int reference = 0; reference != listLength; reference++ )
+        {
+            dlpl.addPageFront( reference, new PageData( reference ) );
+        }
+
+        assert (listLength == dlpl.size()) : "List reports erroneous size. Should be: "+ listLength + " Reports: "+dlpl.size();
+
+
+        for ( int reference = 0; reference !=  listLength; reference++)
+        {
+
+            dlpl.removePage( reference );
+        }
+
+        assert (dlpl.size() == 0) : "List reports erroneous size. Should be: "+ 0 + " Reports: "+ dlpl.size();
+    }
+
+
 
 //    /** Does bad things with setting the page refs in the PageData instance and
 //     * the page metadata to different things.
