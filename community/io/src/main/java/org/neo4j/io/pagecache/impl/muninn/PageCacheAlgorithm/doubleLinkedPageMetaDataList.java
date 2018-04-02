@@ -149,6 +149,18 @@ public class doubleLinkedPageMetaDataList
 
         }
 
+        synchronized boolean empty()
+        {
+
+            if (this.head == null && this.tail == null && this.size == 0)
+            {
+                return true;
+            }
+
+            return false;
+
+        }
+
         /** Add a new page to the list if it doesnt already exist
          *
          * @param pageRef
@@ -258,19 +270,30 @@ public class doubleLinkedPageMetaDataList
             }
 
             //We're the tail, probably.
-            if ( page.last != null  && page.next == null )
+            else if ( page.last != null  && page.next == null )
             {
                 page.last.next = null;
                 this.tail = page.last;
             }
 
             //We're the head, probably.
-            if ( page.last == null && page.next != null )
+            else if ( page.last == null && page.next != null )
             {
                 page.next.last = null;
                 this.head = page.next;
             }
 
+            //We're the top, and only, element in the list
+            else if (page.last == null && page.next == null)
+            {
+                this.head = null;
+                this.tail = null;
+            }
+
+            if (this.size -1 < 0)
+            {
+                System.out.println(" Would make it negative");
+            }
             this.size--;
 
         }
