@@ -21,10 +21,10 @@ package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
 import org.neo4j.io.pagecache.PageData;
+import org.neo4j.io.pagecache.impl.muninn.CacheLiveLockException;
 import org.neo4j.io.pagecache.impl.muninn.MuninnPageCache;
 import org.neo4j.io.pagecache.impl.muninn.PageList;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;
-import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.doubleLinkedPageMetaDataList;
 
 import java.io.IOException;
 
@@ -44,7 +44,7 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     //LRU managed
     doubleLinkedPageMetaDataList a2List = new doubleLinkedPageMetaDataList();
 
-    public MuninnPageCacheAlgorithm2Q( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
+    public MuninnPageCacheAlgorithm2Q(int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
     {
 
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
@@ -53,135 +53,202 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
 
     }
 
-    public void setNumberOfPages( long maxPages )
+    public void setNumberOfPages(long maxPages)
     {
         this.a1Size = maxPages / 2;
         this.a2Size = maxPages / 2;
     }
 
 
-    /** Evicts a page from the FiFo managed A1 list **/
-    private long a1Evict ()
+    /**
+     * Evicts a page from the FiFo managed A1 list
+     **/
+    private long a1Evict(PageList pages, PageFaultEvent faultEvent) throws IOException
     {
-        long pageRef ;
+        doubleLinkedPageMetaDataList.Page page = null;
+        int iterations = 0;
+        boolean evicted = false;
+
         synchronized ( this.a1List )
         {
-          pageRef = this.a1List.tail.pageRef;
+
+            if (!this.a1List.empty())
+            {
+                page = this.a1List.tail;
+                do
+                {
+                    if (iterations >= this.a1List.size())
+                    {
+                        return 0;
+                    }
+
+                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef))
+                    {
+                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                    }
+                    if (evicted)
+                    {
+                        break;
+                    }
+
+                    if (page.last == null)
+                    {
+                        page = this.a1List.tail;
+                    } else
+                    {
+                        page = page.last;
+                    }
+
+                    iterations++;
+                } while (!evicted);
+
+                if (evicted)
+                {
+                    this.a1List.removePage(page.pageRef);
+                }
+            }
+            else
+            {
+                return 0;
+            }
         }
 
-        this.a1List.removePage( pageRef );
-
-        return pageRef;
+        return page.pageRef;
     }
 
-    /** Enters a page to the A1 list. **/
-    private void a1Enter( long pageRef, PageData pageData)
+    /**
+     * Enters a page to the A1 list.
+     **/
+    private void a1Enter(long pageRef, PageData pageData)
     {
-        this.a1List.addPageFront( pageRef, pageData );
+        this.a1List.addPageFront(pageRef, pageData);
     }
 
-    /** Evicts a page from the LRU managed A1 list **/
-    private long a2Evict ()
+    /**
+     * Evicts a page from the LRU managed A1 list
+     **/
+    private long a2Evict(PageList pages, PageFaultEvent faultEvent) throws IOException
     {
-        long pageRef ;
+        doubleLinkedPageMetaDataList.Page page = null;
+        int iterations = 0;
+        boolean evicted = false;
+
         synchronized ( this.a2List )
         {
-            pageRef = this.a2List.tail.pageRef;
+            if (!this.a2List.empty())
+            {
+                page = this.a2List.tail;
+                do
+                {
+
+                    if (iterations >= this.a2List.size())
+                    {
+                        return 0;
+                    }
+
+                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef))
+                    {
+                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                    }
+                    if (evicted)
+                    {
+                        break;
+                    }
+
+                    if (page.last == null)
+                    {
+                        page = a2List.tail;
+                    } else
+                    {
+                        page = page.last;
+                    }
+
+                    iterations++;
+                }
+                while (!evicted);
+
+                if (evicted)
+                {
+                    this.a2List.removePage(page.pageRef);
+                }
+            } else
+            {
+                return 0;
+            }
         }
-
-        this.a2List.removePage( pageRef );
-
-        return pageRef;
+        return page.pageRef;
     }
 
-    /** Enters a page to the A1 list. **/
-    private void a2Enter( long pageRef, PageData pageData)
+    /**
+     * Enters a page to the A1 list.
+     **/
+    private void a2Enter(long pageRef, PageData pageData)
     {
-        this.a2List.addPageFront( pageRef, pageData );
+        this.a2List.addPageFront(pageRef, pageData);
     }
 
     @Override
     public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages) throws IOException
     {
 
+        long pageRef = 0;
         int iterations = 0;
-        doubleLinkedPageMetaDataList.Page page = null;
-        boolean evicted = false;
 
-        if ( this.a1List.size() >= this.a2List.size())
+        do
         {
-            synchronized ( this.a1List ) {
-                page = this.a1List.tail;
-                while (!evicted) {
-
-                    if (iterations > a1Size) {
-                        System.out.println("Excessive iteratons on a1 list");
-                    }
-
-                    this.pageCache.assertHealthy();
-                    if (this.pageCache.getFreelistHead() != null) {
-                        return 0;
-                    }
-
-
-                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef)) {
-                        evicted = pages.tryEvict(page.pageRef, faultEvent);
-                    }
-                    if (evicted) {
-                        break;
-                    }
-
-                    page = page.last;
-
-                    iterations++;
-                }
-
-                this.a1List.removePage(page.pageRef);
-            }
-        }
-        else
-        {
-            synchronized ( this.a2List )
+            this.pageCache.assertHealthy();
+            if (this.pageCache.getFreelistHead() != null)
             {
-
-                page = this.a2List.tail;
-                while (!evicted) {
-
-                    if (iterations > this.a2Size) {
-                        System.out.println("Excessive iteratons on a2 list");
-                    }
-
-                    this.pageCache.assertHealthy();
-                    if (this.pageCache.getFreelistHead() != null) {
-                        return 0;
-                    }
-
-
-                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef)) {
-                        evicted = pages.tryEvict(page.pageRef, faultEvent);
-                    }
-                    if (evicted) {
-                        break;
-                    }
-
-
-                    if (page.last == null) {
-                        System.out.println("Reached list HEAD");
-                        page = a2List.tail;
-                    } else {
-                        page = page.last;
-                    }
-                }
-
-                this.a2List.removePage(page.pageRef);
-                iterations++;
+                return 0;
             }
-        }
 
+            if ( this.a1List.empty() && this.a2List.empty())
+            {
+                return 0;
+            }
 
+            if (iterations >= this.cooperativeEvictionLiveLockThreshold)
+            {
+                throw cooperativeEvictionLiveLock();
+            }
+            if (!this.a1List.empty())
+            {
+                pageRef = this.a1Evict(pages, faultEvent);
 
-        return page.pageRef;
+            }
+            if (pageRef == 0 && !this.a2List.empty())
+            {
+                pageRef = this.a2Evict(pages, faultEvent);
+            }
+
+            //freelist head is null
+            if (pageRef == -1)
+            {
+                return 0;
+            }
+
+            iterations++;
+
+    } while(pageRef == 0);
+
+    return pageRef;
     }
+
+    private CacheLiveLockException cooperativeEvictionLiveLock()
+    {
+        return new CacheLiveLockException(
+                "Live-lock encountered when trying to cooperatively evict a page during page fault. " +
+                        "This happens when we want to access a page that is not in memory, so it has to be faulted in, but " +
+                        "there are no free memory pages available to accept the page fault, so we have to evict an existing " +
+                        "page, but all the in-memory pages are currently locked by other accesses. If those other access are " +
+                        "waiting for our page fault to make progress, then we have a live-lock, and the only way we can get " +
+                        "out of it is by throwing this exception. This should be extremely rare, but can happen if the page " +
+                        "cache size is tiny and the number of concurrently running transactions is very high. You should be " +
+                        "able to get around this problem by increasing the amount of memory allocated to the page cache " +
+                        "with the `dbms.memory.pagecache.size` setting. Please contact Neo4j support if you need help tuning " +
+                        "your database." );
+    }
+
 
     @Override
     public void notifyPin(long pageRef, PageData pageData)
@@ -219,7 +286,6 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     @Override
     public void externalEviction(long pageRef, PageData pageData)
     {
-
         synchronized ( this.a1List )
         {
             if (this.a1List.exists(pageRef))
@@ -227,13 +293,14 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
                 this.a1List.removePage(pageRef);
             }
         }
-       synchronized ( this.a2List )
-       {
-           if (this.a2List.exists(pageRef))
-           {
-               this.a2List.removePage(pageRef);
-           }
-       }
+
+        synchronized ( this.a2List )
+        {
+            if (this.a2List.exists(pageRef))
+            {
+                this.a2List.removePage(pageRef);
+            }
+        }
 
 
     }

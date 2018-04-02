@@ -24,6 +24,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.neo4j.io.pagecache.PageData;
 
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertFalse;
+
 public class doubleLinkedPageMetaDataListTest
 {
     @Rule
@@ -160,6 +163,67 @@ public class doubleLinkedPageMetaDataListTest
         }
 
         assert (dlpl.size() == 0) : "List reports erroneous size. Should be: "+ 0 + " Reports: "+ dlpl.size();
+    }
+
+    @Test
+    public void anEmptyListShouldReportEmpty()
+    {
+        int listLength = 300;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList();
+
+        for ( int reference = 0; reference != listLength; reference++ )
+        {
+            dlpl.addPageFront( reference, new PageData( reference ) );
+        }
+
+        assertFalse ("List reports empty, when it isnt.", dlpl.empty());
+
+        for ( int reference = 0; reference !=  listLength; reference++)
+        {
+
+            dlpl.removePage( reference );
+        }
+
+        assertTrue ("List reports not empty, when is should be, ", dlpl.empty());
+
+    }
+
+    @Test
+    public void shouldLeaveListEmptyWhenRemovingHeadIfHeadIsTheOnlyElement()
+    {
+        int listLength = 1;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList();
+
+        dlpl.addPageFront( 0, new PageData( 0 ) );
+
+        assertTrue ("List reports erroneous size. Should be: "+ listLength + " Reports: "+dlpl.size(), listLength == dlpl.size());
+
+        dlpl.removePage( 0 );
+
+        assertTrue ("List reports erroneous size. Should be: "+ 0 + " Reports: "+dlpl.size(), 0 == dlpl.size()); ;
+
+        assertTrue ("Tried to remove head of list with one element, but head pointer is not null", dlpl.head == null) ;
+        assertTrue ( "Tried to remove tail of list with one element, but tail pointer is not null", dlpl.tail == null) ;
+    }
+
+    @Test
+    public void sizeShouldBeZeroIfListIsEmpty() throws AssertionError
+    {
+        int listLength = 1;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList();
+
+        assertTrue("List Size Is Not 0", 0 == dlpl.size());
+
+        for ( int reference = 0; reference != listLength; reference++ )
+        {
+            dlpl.addPageFront( reference, new PageData( reference ) );
+        }
+
+        assert (listLength == dlpl.size()) : "List reports erroneous size after adding" + listLength + "element(s). Should be: "+ listLength + " Reports: "+dlpl.size();
+
+        dlpl.removePage( 0 );
+
+        assert (dlpl.size() == 0) : "List reports erroneous size after removing 1 element. Should be: "+ 0 + " Reports: "+ dlpl.size();
     }
 
 
