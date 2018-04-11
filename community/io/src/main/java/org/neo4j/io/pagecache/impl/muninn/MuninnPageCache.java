@@ -37,10 +37,7 @@ import java.util.concurrent.locks.LockSupport;
 import org.neo4j.io.fs.FileSystemAbstraction;
 import org.neo4j.io.mem.MemoryAllocator;
 import org.neo4j.io.pagecache.*;
-import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithm2Q;
-import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmCLOCK;
-import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
-import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRUK;
+import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.*;
 import org.neo4j.io.pagecache.tracing.EvictionRunEvent;
 import org.neo4j.io.pagecache.tracing.FlushEventOpportunity;
 import org.neo4j.io.pagecache.tracing.MajorFlushEvent;
@@ -196,7 +193,7 @@ public class MuninnPageCache implements PageCache
     private boolean printExceptionsOnClose;
 
     // Instance of our page cache eviction algorithm
-    private MuninnPageCacheAlgorithm2Q PageCacheAlgorithm = new MuninnPageCacheAlgorithm2Q( this.cooperativeEvictionLiveLockThreshold, this);
+    private MuninnPageCacheAlgorithmLFU PageCacheAlgorithm = new MuninnPageCacheAlgorithmLFU( this.cooperativeEvictionLiveLockThreshold, this );
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.
@@ -634,6 +631,8 @@ public class MuninnPageCache implements PageCache
 
         // Close the page swapper factory last. If this fails then we will still consider ourselves closed.
         swapperFactory.close();
+        this.PageCacheAlgorithm.printStatus();
+
     }
 
     private void interrupt( Thread thread )
