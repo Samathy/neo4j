@@ -73,9 +73,9 @@ public class doubleLinkedPageMetaDataList
 
         public synchronized long size()
         {
-            if (this.size < 0)
+            if ( this.size < 0 )
             {
-                System.out.println("What the heck?! " +this.size);
+                System.out.println( "What the heck?! " + this.size );
             }
             return this.size;
         }
@@ -152,7 +152,7 @@ public class doubleLinkedPageMetaDataList
         synchronized boolean empty()
         {
 
-            if (this.head == null && this.tail == null && this.size == 0)
+            if ( this.head == null && this.tail == null && this.size == 0 )
             {
                 return true;
             }
@@ -168,7 +168,7 @@ public class doubleLinkedPageMetaDataList
          */
         public synchronized Page addPageFront( long pageRef, PageData pageData )
         {
-            Page newPage = new Page( pageRef, pageData);
+            Page newPage = new Page( pageRef, pageData );
 
             if ( this.head != null )
             {
@@ -284,13 +284,13 @@ public class doubleLinkedPageMetaDataList
             }
 
             //We're the top, and only, element in the list
-            else if (page.last == null && page.next == null)
+            else if ( page.last == null && page.next == null )
             {
                 this.head = null;
                 this.tail = null;
             }
 
-            if (this.size -1 < 0)
+            if ( this.size - 1 < 0 )
             {
                 System.out.println(" Would make it negative");
             }
