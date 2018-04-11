@@ -31,6 +31,9 @@ public class PageData
     long accessTimes[]; //Should be private
     private long references;
 
+    private boolean isNew = true;
+    private boolean isOld = false;
+
     public PageData( long pageRef )
     {
         this.pageRef = pageRef;
@@ -118,6 +121,53 @@ public class PageData
         this.accessTimes = new long [kSize];
 
         return this;
+    }
+
+    public synchronized void setNew( boolean val )
+    {
+        this.isNew = val;
+    }
+
+    public boolean isNew()
+    {
+        return this.isNew;
+    }
+
+    public synchronized void setOld( boolean val )
+    {
+        this.isOld = val;
+    }
+
+    public boolean isOld()
+    {
+        return this.isOld;
+    }
+
+    public synchronized void incReferences()
+    {
+        this.references++;
+    }
+
+    public synchronized void decReferences()
+    {
+        if ( this.references != 0)
+        {
+            this.references--;
+        }
+        else
+        {
+            System.out.println("Should not be reducing reference count below 0!");
+        }
+    }
+
+    public long getRefCount()
+    {
+        return this.references;
+    }
+
+    public synchronized void setRefCount ( long refCount )
+    {
+        this.references = refCount;
     }
 
 }
