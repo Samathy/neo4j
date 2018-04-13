@@ -28,7 +28,7 @@ public class PageData
     private long faultInTime;
     private long lastUsageTime;
     private long kSize = 1;
-    long accessTimes[]; //Should be private
+    private long[] accessTimes; //Should be private
     private long references;
 
     private boolean isNew = true;
@@ -39,7 +39,7 @@ public class PageData
         this.pageRef = pageRef;
     }
 
-    public PageData ( long pageRef, int kSize)
+    public PageData( long pageRef, int kSize )
     {
         this.accessTimes = new long [kSize];
         this.kSize = kSize;
@@ -71,17 +71,17 @@ public class PageData
 
     public long getHistoryTime( int k ) throws IndexOutOfBoundsException
     {
-        if (this.accessTimes == null)
+        if ( this.accessTimes == null )
         {
             throw new IndexOutOfBoundsException();
         }
 
-        if ( k-1 < 0 || k > accessTimes.length)
+        if ( k - 1 < 0 || k > accessTimes.length )
         {
             throw new IndexOutOfBoundsException();
         }
 
-        if ( k == 1)
+        if ( k == 1 )
         {
             return this.lastUsageTime;
         }
@@ -90,9 +90,9 @@ public class PageData
         return this.accessTimes[k - 1];
     }
 
-    public synchronized void setAccessTime(int element, long time)
+    public synchronized void setAccessTime( int element, long time )
     {
-            this.accessTimes[element-1] = time;
+            this.accessTimes[element - 1] = time;
     }
 
     /** Sets last usage time of this page data
@@ -104,7 +104,7 @@ public class PageData
      * history variable.
      * @param time
      */
-    public synchronized void setLastUsageTime (long time)
+    public synchronized void setLastUsageTime( long time )
     {
 
     }
@@ -150,13 +150,13 @@ public class PageData
 
     public synchronized void decReferences()
     {
-        if ( this.references != 0)
+        if ( this.references != 0 )
         {
             this.references--;
         }
         else
         {
-            System.out.println("Should not be reducing reference count below 0!");
+            System.out.println( "Should not be reducing reference count below 0!" );
         }
     }
 
@@ -165,7 +165,7 @@ public class PageData
         return this.references;
     }
 
-    public synchronized void setRefCount ( long refCount )
+    public synchronized void setRefCount( long refCount )
     {
         this.references = refCount;
     }

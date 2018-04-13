@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2002-2018 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm;
 
 import org.neo4j.io.pagecache.PageCacheAlgorithm;
@@ -40,13 +59,12 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
      *  Suggested: fOld <= 1- fNew
      *
      *  fOld = 1- fNew results in a middle size of 0
-     *  fOld = 1/(cacheSize) = LRU policy.
+     *  fOld = 1 / ( cacheSize ) = LRU policy.
      */
     long fOld;
     long fNew;
 
-
-    public MuninnPageCacheAlgorithmLFU ( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
+    public MuninnPageCacheAlgorithmLFU( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
     {
 
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
@@ -55,14 +73,14 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
         this.new_boundary = this.pageList.head;
         this.old_boundary = this.pageList.head;
 
-        this.countChainList.put(new Long(0),new doubleLinkedPageMetaDataList() );
+        this.countChainList.put( new Long( 0 ),new doubleLinkedPageMetaDataList() );
     }
 
     public void setNumberOfPages( long maxPages )
     {
         this.cacheSize = maxPages;
-        this.fNew = round(this.cacheSize / 3);
-        this.fOld =  cacheSize - (cacheSize/2 - fNew);
+        this.fNew = round( this.cacheSize / 3 );
+        this.fOld =  cacheSize - ( cacheSize / 2 - fNew );
     }
 
     private long updateCmax()
@@ -96,14 +114,13 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
             return 0;
         }
 
-
-        synchronized (this.pageList)
+        synchronized ( this.pageList )
         {
-            synchronized (this.countChainList)
+            synchronized ( this.countChainList )
             {
                 updateCmax();
 
-                while (!evicted)
+                while ( !evicted )
                 {
                     if ( count > this.Cmax )
                     {
@@ -125,26 +142,29 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                             {
                                 evictionCandidatePage = chain.tail;
                                 evictionCandidate = chain.tail.pageRef;
-                            } else
+                            }
+                            else
                             {
                                 count++;
                                 continue;
                             }
-                        } else
+                        }
+                        else
                         {
                             count++;
                             continue;
                         }
 
-                    } else
+                    }
+                    else
                     {
                         count++;
                         continue;
                     }
 
-                    if ( pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate) )
+                    if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                     {
-                        evicted = pages.tryEvict(evictionCandidate, faultEvent);
+                        evicted = pages.tryEvict( evictionCandidate, faultEvent );
                         if ( evicted )
                         {
                             this.LFUEvictions++;
@@ -157,7 +177,7 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                 }
             }
         }
-        synchronized (this.pageList)
+        synchronized ( this.pageList )
         {
             synchronized ( this.countChainList )
             {
@@ -174,9 +194,9 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                         return 0;
                     }
 
-                    if ( pages.isLoaded( evictionCandidate) && pages.decrementUsage(evictionCandidate ) )
+                    if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                     {
-                        evicted = pages.tryEvict(evictionCandidate, faultEvent);
+                        evicted = pages.tryEvict( evictionCandidate, faultEvent );
                     }
 
                     while ( !evicted )
@@ -198,9 +218,9 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                         }
                         //TODO We should probs do something if we've got to the HEAD of the list
 
-                        if ( pages.isLoaded(evictionCandidate) && pages.decrementUsage(evictionCandidate ))
+                        if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                         {
-                            evicted = pages.tryEvict(evictionCandidate, faultEvent);
+                            evicted = pages.tryEvict( evictionCandidate, faultEvent );
                         }
 
                         iterations++;
@@ -212,21 +232,21 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                 {
                     long chainElement = evictionCandidatePage.pageData.getRefCount();
 
-                    this.countChainList.get(chainElement).removePage(evictionCandidate);
+                    this.countChainList.get( chainElement ).removePage( evictionCandidate );
 
-                    if ( this.countChainList.get(chainElement).size() == 0 && chainElement != 0 )
+                    if ( this.countChainList.get( chainElement ).size() == 0 && chainElement != 0 )
                     {
-                        this.countChainList.remove(chainElement);
+                        this.countChainList.remove( chainElement );
                     }
-                    this.pageList.removePage(evictionCandidate);
+                    this.pageList.removePage( evictionCandidate );
                 }
 
-                if (!evicted)
+                if ( !evicted )
                 {
                     throw cooperativeEvictionLiveLock();
                 }
 
-                if ( this.new_boundary == evictionCandidatePage)
+                if ( this.new_boundary == evictionCandidatePage )
                 {
                     if ( this.new_boundary.next != null )
                     {
@@ -240,7 +260,7 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                 }
                 if ( this.old_boundary == evictionCandidatePage )
                 {
-                    if ( this.old_boundary.last != null)
+                    if ( this.old_boundary.last != null )
                     {
                         this.old_boundary = this.old_boundary.last;
                     }
@@ -282,14 +302,15 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
         {
             synchronized ( this.countChainList )
             {
-                if ( !this.pageList.exists(pageRef) )
+                if ( !this.pageList.exists( pageRef ) )
                 {
                     //It'd be nice if we could use the same page object for both lists, to save memory.
-                    this.pageList.addPageFront(pageRef, pageData);
+                    this.pageList.addPageFront( pageRef, pageData );
                     try
                     {
-                        this.countChainList.get(new Long(0)).addPageFront(pageRef, pageData); //Should never be 0, so we're probably fine to not error check.
-                    } catch ( Exception e )
+                        this.countChainList.get( new Long( 0 ) ).addPageFront( pageRef, pageData );
+                    }
+                    catch ( Exception e )
                     {
                         throw e;
                     }
@@ -298,30 +319,32 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                     {
                         this.new_boundary = this.pageList.head;
                         this.old_boundary = this.pageList.head;
-                    } else
+                    }
+                    else
                     {
 
                         if ( this.new_boundary.last != null )
                         {
                             this.new_boundary = this.new_boundary.last;
                         }
-                        this.new_boundary.pageData.setNew(false);
+                        this.new_boundary.pageData.setNew( false );
 
                         if ( this.old_boundary.last != null )
                         {
                             this.old_boundary = this.old_boundary.last;
                         }
-                        this.old_boundary.pageData.setOld(true);
+                        this.old_boundary.pageData.setOld( true );
                     }
 
                     return;
-                } else if ( this.pageList.exists(pageRef) )
+                }
+                else if ( this.pageList.exists(pageRef) )
                 {
                     doubleLinkedPageMetaDataList.Page page = this.pageList.findPage(pageRef);
 
                     //Keep moving the boundary pointers up the list until they're in the right places.
                     // Or, if they're already in the right place just action on the pages.
-                    if ( this.pageList.size() < this.fNew || this.pageList.size() < this.fOld)
+                    if ( this.pageList.size() < this.fNew || this.pageList.size() < this.fOld )
                     {
                         if ( this.pageList.size() < this.fNew )
                         {
@@ -348,28 +371,28 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                         this.old_boundary.pageData.setOld(true);
                     }
 
-
                     //If the page is not in the new section, then move it to the new section and
                     //increase its reference count.
                     //Else, just leave it alone.
-                    if ( !page.pageData.isNew())
+                    if ( !page.pageData.isNew() )
                     {
-                        pageData.setNew(true);
-                        pageData.setOld(false);
+                        pageData.setNew( true );
+                        pageData.setOld( false );
 
                         doubleLinkedPageMetaDataList list = null;
                         //Swap it into its new count chain list location
                         try
                         {
-                            list = this.countChainList.get(page.pageData.getRefCount());
+                            list = this.countChainList.get( page.pageData.getRefCount() );
                             list.removePage( pageRef );
-                        } catch ( Exception e )
+                        }
+                        catch ( Exception e )
                         {
                             throw e;
                         }
 
                         //Clean up if we just removed the last element
-                        if ( this.countChainList.get(page.pageData.getRefCount()).size() == 0 )
+                        if ( this.countChainList.get( page.pageData.getRefCount() ).size() == 0 )
                         {
                             if ( page.pageData.getRefCount() != 0 )
                             {
@@ -377,16 +400,17 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                             }
                         }
 
-                        pageData.setRefCount(page.pageData.getRefCount() + 1); //TODO correlated references
-                        this.pageList.setPageDataAndMoveToHead(pageRef, pageData);
+                        pageData.setRefCount( page.pageData.getRefCount() + 1 ); //TODO correlated references
+                        this.pageList.setPageDataAndMoveToHead( pageRef, pageData );
 
                         //If the countList already contains a double linked list for this key
                         //then just add it to the top of that.
                         //Else, make a new list.
-                        if ( this.countChainList.containsKey(page.pageData.getRefCount()) )
+                        if ( this.countChainList.containsKey( page.pageData.getRefCount() ) )
                         {
-                            this.countChainList.get(page.pageData.getRefCount()).addPageFront(page.pageRef, pageData);
-                        } else
+                            this.countChainList.get( page.pageData.getRefCount() ).addPageFront( page.pageRef, pageData );
+                        }
+                        else
                         {
                             this.countChainList.put(page.pageData.getRefCount(), new doubleLinkedPageMetaDataList());
                             this.countChainList.get(page.pageData.getRefCount()).addPageFront(page.pageRef, pageData);
@@ -400,14 +424,14 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                         //ref count, just move it to the head of wherever it is in
                         //Each list.
 
-                        page.pageData.setLastUsageTime(pageData.getLastUsageTime());
+                        page.pageData.setLastUsageTime( pageData.getLastUsageTime() );
                         doubleLinkedPageMetaDataList list = null;
 
                         //Swap it into its new count chain list location
-                        list = this.countChainList.get(page.pageData.getRefCount());
-                        list.setPageDataAndMoveToHead( pageRef, page.pageData);
+                        list = this.countChainList.get( page.pageData.getRefCount() );
+                        list.setPageDataAndMoveToHead( pageRef, page.pageData );
 
-                        this.pageList.setPageDataAndMoveToHead(pageRef, page.pageData);
+                        this.pageList.setPageDataAndMoveToHead( pageRef, page.pageData );
                     }
 
                     return;
@@ -428,17 +452,17 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                 {
                     try
                     {
-                        doubleLinkedPageMetaDataList list = this.countChainList.get(this.pageList.findPage(pageRef).pageData.getRefCount());
-                        list.removePage(pageRef);
+                        doubleLinkedPageMetaDataList list = this.countChainList.get( this.pageList.findPage( pageRef ).pageData.getRefCount() );
+                        list.removePage( pageRef );
                     }
-                    catch ( Exception e)
+                    catch ( Exception e )
                     {
                         throw e;
                     }
 
                     doubleLinkedPageMetaDataList.Page page = this.pageList.findPage( pageRef );
 
-                   if ( this.new_boundary == page)
+                   if ( this.new_boundary == page )
                    {
                        if ( this.new_boundary.next != null )
                        {
@@ -452,7 +476,7 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                    }
                    if ( this.old_boundary == page )
                    {
-                       if ( this.old_boundary.last != null)
+                       if ( this.old_boundary.last != null )
                        {
                            this.old_boundary = this.old_boundary.last;
                        }
@@ -468,19 +492,19 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
 
         }
         return;
-
     }
 
-
-
-    public void printStatus ()
+    public void printStatus( )
     {
         doubleLinkedPageMetaDataList.Page page = this.pageList.head;
 
-        while ( page != null)
+        while ( page != null )
         {
 
-            String msg = format( "PageRef: "+ page.pageRef+ " References: "+ page.pageData.getRefCount()+" isNew: "+page.pageData.isNew()+" isOld: "+page.pageData.isOld()+"");
+            String msg = format( "PageRef: " + page.pageRef + " References: " +
+                    page.pageData.getRefCount() + " isNew:"
+                     + page.pageData.isNew() + " isOld:"
+                     + page.pageData.isOld() + "");
             if ( this.new_boundary == page )
             {
                 msg = msg + "<-- new_boundary";
@@ -495,17 +519,13 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
 
         }
 
-        System.out.println("LFU Evictions: " + this.LFUEvictions);
-        System.out.println("LRU Evictions: " + this.LRUEvictions);
+        System.out.println( "LFU Evictions: " + this.LFUEvictions );
+        System.out.println( "LRU Evictions: " + this.LRUEvictions );
 
-        System.out.println("Cmax: " + this.Cmax);
+        System.out.println( "Cmax: " + this.Cmax );
 
-        System.out.println("fNEW: " + this.fNew);
-        System.out.println("fOLD: " + this.fOld);
-        System.out.println("Middle: "+ (this.cacheSize - (this.fNew + this.fOld)));
-
-
-
-
+        System.out.println( "fNEW: " + this.fNew );
+        System.out.println( "fOLD: " + this.fOld );
+        System.out.println( "Middle: " + ( this.cacheSize - ( this.fNew + this.fOld ) ) );
     }
 }
