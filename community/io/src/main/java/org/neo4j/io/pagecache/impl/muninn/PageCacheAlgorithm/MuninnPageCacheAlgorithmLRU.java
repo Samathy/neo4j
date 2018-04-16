@@ -137,6 +137,10 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                     {
                         evicted = pages.tryEvict( evictionCandidate, faultEvent );
                     }
+                    if ( evicted  )
+                    {
+                        break;
+                    }
 
                     iterations++;
                 }
