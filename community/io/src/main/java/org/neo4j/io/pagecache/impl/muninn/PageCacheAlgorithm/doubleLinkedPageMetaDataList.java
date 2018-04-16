@@ -54,7 +54,7 @@ public class doubleLinkedPageMetaDataList
         Page tail;
 
         //The number of pages currently logged in this list.
-        private long size = 0;
+        private long size;
 
         /* Blank constructor needed if we want to have a page list but don't start it with any pages. */
         public doubleLinkedPageMetaDataList( )
@@ -71,7 +71,7 @@ public class doubleLinkedPageMetaDataList
 
         }
 
-        public synchronized long size()
+        public synchronized long size( )
         {
             if ( this.size < 0 )
             {
@@ -149,7 +149,7 @@ public class doubleLinkedPageMetaDataList
 
         }
 
-        synchronized boolean empty()
+        synchronized boolean empty( )
         {
 
             if ( this.head == null && this.tail == null && this.size == 0 )
@@ -292,7 +292,7 @@ public class doubleLinkedPageMetaDataList
 
             if ( this.size - 1 < 0 )
             {
-                System.out.println(" Would make it negative");
+                System.out.println( " Would make it negative" );
             }
             this.size--;
 
@@ -328,7 +328,7 @@ public class doubleLinkedPageMetaDataList
 
         }
 
-        public synchronized boolean verifyLinkedList() throws IllegalStateException
+        public synchronized boolean verifyLinkedList( ) throws IllegalStateException
         {
             Page page = null;
 

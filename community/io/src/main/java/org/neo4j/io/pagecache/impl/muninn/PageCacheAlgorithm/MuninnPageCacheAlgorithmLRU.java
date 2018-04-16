@@ -64,7 +64,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         referenceTime = System.nanoTime();
     }
 
-    public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
+    public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
     {
         this.pageCache = pageCache;
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;

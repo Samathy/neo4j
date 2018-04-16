@@ -29,6 +29,7 @@ import org.neo4j.io.pagecache.CursorException;
 import org.neo4j.io.pagecache.PageCursor;
 import org.neo4j.io.pagecache.PageSwapper;
 import org.neo4j.io.pagecache.PagedFile;
+import org.neo4j.io.pagecache.PageData;
 import org.neo4j.io.pagecache.impl.FileIsNotMappedException;
 import org.neo4j.io.pagecache.impl.muninn.PageCacheAlgorithm.MuninnPageCacheAlgorithmLRU;
 import org.neo4j.io.pagecache.tracing.PageFaultEvent;

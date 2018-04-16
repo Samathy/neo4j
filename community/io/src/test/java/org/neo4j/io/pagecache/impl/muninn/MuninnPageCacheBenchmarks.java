@@ -46,13 +46,13 @@ public class MuninnPageCacheBenchmarks
 
     Map<String, DefaultPageCursorTracer> results;
     @Rule
-    public TestDirectory testDirectory = TestDirectory.testDirectory();
+    public TestDirectory testDirectory = TestDirectory.testDirectory( );
 
     @Rule
-    public Timeout globalTimeout = Timeout.seconds(50);
+    public Timeout globalTimeout = Timeout.seconds( 50 );
 
     @BeforeClass
-    public static void printHeadings()
+    public static void printHeadings( )
     {
         System.out.println( "testName, faults,evictions, pins, hits, hitRatio, flushes, bytesWritten, bytesRead" );
     }
@@ -60,7 +60,7 @@ public class MuninnPageCacheBenchmarks
     @Test
     /** This is an absurdly small number of pages.
      * It'll probably fail. **/
-    public void stressWithFiftyCachePages() throws Exception
+    public void stressWithFiftyCachePages( ) throws Exception
     {
         DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages( 50 );
@@ -68,7 +68,7 @@ public class MuninnPageCacheBenchmarks
     }
 
     @Test
-    public void stressWithOneHundredCachePages() throws Exception
+    public void stressWithOneHundredCachePages( ) throws Exception
     {
         DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages( 100 );
@@ -76,7 +76,7 @@ public class MuninnPageCacheBenchmarks
     }
 
     @Test
-    public void stressWithFiveHundredCachePages() throws Exception
+    public void stressWithFiveHundredCachePages( ) throws Exception
     {
         DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages( 500 );
@@ -84,7 +84,7 @@ public class MuninnPageCacheBenchmarks
     }
 
     @Test
-    public void stressWithOneThousandCachePages() throws Exception
+    public void stressWithOneThousandCachePages( ) throws Exception
     {
         DefaultPageCursorTracer monitor;
         monitor = stressDefNoPages( 1000 );
@@ -98,20 +98,20 @@ public class MuninnPageCacheBenchmarks
      */
     private DefaultPageCursorTracer stressDefNoPages( int pages ) throws Exception
     {
-        DefaultPageCacheTracer monitor = new DefaultPageCacheTracer();
-        DefaultPageCursorTracer cursorTracer = new DefaultPageCursorTracer();
+        DefaultPageCacheTracer monitor = new DefaultPageCacheTracer( );
+        DefaultPageCursorTracer cursorTracer = new DefaultPageCursorTracer( );
         cursorTracer.init( monitor );
         Condition condition = numberOfEvictions( monitor, 100_000 );
 
-        PageCacheStressTest runner = new PageCacheStressTest.Builder()
-                .withWorkingDirectory( testDirectory.directory() )
+        PageCacheStressTest runner = new PageCacheStressTest.Builder( )
+                .withWorkingDirectory( testDirectory.directory( ) )
                 .withNumberOfCachePages( pages )
                 .with( monitor )
                 .with( condition )
-                .withPageCursorTracerSupplier( () -> cursorTracer )
-                .build();
+                .withPageCursorTracerSupplier( ( ) -> cursorTracer )
+                .build( );
 
-        runner.run();
+        runner.run( );
         return cursorTracer;
     }
 
@@ -121,9 +121,9 @@ public class MuninnPageCacheBenchmarks
      */
     private void printMonitorStats( String testName, DefaultPageCursorTracer monitor )
     {
-        System.out.println( String.format( "%s, %s, %s, %s, %s, %s, %s, %s, %s",testName, monitor.faults(),
-                monitor.evictions(), monitor.pins(), monitor.hits(), monitor.hitRatio(), monitor.flushes(),
-                monitor.bytesWritten(), monitor.bytesRead() ) );
+        System.out.println( String.format( "%s, %s, %s, %s, %s, %s, %s, %s, %s",testName, monitor.faults( ),
+                monitor.evictions( ), monitor.pins(), monitor.hits(), monitor.hitRatio(), monitor.flushes( ),
+                monitor.bytesWritten( ), monitor.bytesRead( ) ) );
     }
 
     void printEightyChars( String c )
@@ -132,9 +132,7 @@ public class MuninnPageCacheBenchmarks
         {
             System.out.print( c );
         }
-        System.out.println();
+        System.out.println( );
     }
-
-
 
 }

@@ -41,7 +41,7 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
     // So we can access it's pages.
     private MuninnPageCache pageCache;
 
-    public MuninnPageCacheAlgorithmCLOCK(int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
+    public MuninnPageCacheAlgorithmCLOCK( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
     {
         this.pageCache = pageCache;
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
@@ -54,15 +54,15 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
          */
 
         int iterations = 0;
-        int pageCount = pages.getPageCount();
-        int clockArm = ThreadLocalRandom.current().nextInt( pages.getPageCount() );
+        int pageCount = pages.getPageCount( );
+        int clockArm = ThreadLocalRandom.current( ).nextInt( pages.getPageCount( ) );
         long pageRef;
         boolean evicted = false;
         do
         {
 
-            this.pageCache.assertHealthy();
-            if ( this.pageCache.getFreelistHead() != null )
+            this.pageCache.assertHealthy( );
+            if ( this.pageCache.getFreelistHead( ) != null )
             {
                 return 0;
             }
@@ -71,7 +71,7 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
             {
                 if ( iterations == this.cooperativeEvictionLiveLockThreshold )
                 {
-                    throw cooperativeEvictionLiveLock();
+                    throw cooperativeEvictionLiveLock( );
                 }
                 iterations++;
                 clockArm = 0;
@@ -80,7 +80,7 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
             pageRef = pages.deref( clockArm );
             if ( pages.isLoaded( pageRef ) && pages.decrementUsage( pageRef ) )
             {
-                evicted = pages.tryEvict(pageRef, faultEvent );
+                evicted = pages.tryEvict( pageRef, faultEvent );
             }
             clockArm++;
         }
@@ -89,7 +89,7 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
 
     }
 
-    private CacheLiveLockException cooperativeEvictionLiveLock()
+    private CacheLiveLockException cooperativeEvictionLiveLock( )
     {
         return new CacheLiveLockException(
                 "Live-lock encountered when trying to cooperatively evict a page during page fault. " +

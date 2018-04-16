@@ -32,7 +32,7 @@ public class PageData
     private long references;
 
     private boolean isNew = true;
-    private boolean isOld = false;
+    private boolean isOld;
 
     public PageData( long pageRef )
     {

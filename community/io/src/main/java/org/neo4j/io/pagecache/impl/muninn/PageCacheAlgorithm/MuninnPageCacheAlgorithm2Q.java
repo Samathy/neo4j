@@ -38,32 +38,29 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     long a2Size;
 
     //Entry list. FiFo managed, stores pages referenced once
-    doubleLinkedPageMetaDataList a1List = new doubleLinkedPageMetaDataList();
+    doubleLinkedPageMetaDataList a1List = new doubleLinkedPageMetaDataList( );
 
     //AM list, stores pages referenced more than once.
     //LRU managed
-    doubleLinkedPageMetaDataList a2List = new doubleLinkedPageMetaDataList();
+    doubleLinkedPageMetaDataList a2List = new doubleLinkedPageMetaDataList( );
 
-    public MuninnPageCacheAlgorithm2Q(int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache)
+    public MuninnPageCacheAlgorithm2Q( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
     {
 
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
         this.pageCache = pageCache;
-
-
     }
 
-    public void setNumberOfPages(long maxPages)
+    public void setNumberOfPages( long maxPages )
     {
         this.a1Size = maxPages / 2;
         this.a2Size = maxPages / 2;
     }
 
-
     /**
      * Evicts a page from the FiFo managed A1 list
      **/
-    private long a1Evict(PageList pages, PageFaultEvent faultEvent) throws IOException
+    private long a1Evict( PageList pages, PageFaultEvent faultEvent ) throws IOException
     {
         doubleLinkedPageMetaDataList.Page page = null;
         int iterations = 0;
@@ -72,39 +69,41 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
         synchronized ( this.a1List )
         {
 
-            if (!this.a1List.empty())
+            if ( !this.a1List.empty( ) )
             {
                 page = this.a1List.tail;
                 do
                 {
-                    if (iterations >= this.a1List.size())
+                    if ( iterations >= this.a1List.size( ) )
                     {
                         return 0;
                     }
 
-                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef))
+                    if ( pages.isLoaded(page.pageRef ) && pages.decrementUsage( page.pageRef ) )
                     {
-                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                        evicted = pages.tryEvict( page.pageRef, faultEvent );
                     }
-                    if (evicted)
+                    if ( evicted )
                     {
                         break;
                     }
 
-                    if (page.last == null)
+                    if ( page.last == null )
                     {
                         page = this.a1List.tail;
-                    } else
+                    }
+                    else
                     {
                         page = page.last;
                     }
 
                     iterations++;
-                } while (!evicted);
+                }
+                while ( !evicted );
 
-                if (evicted)
+                if ( evicted )
                 {
-                    this.a1List.removePage(page.pageRef);
+                    this.a1List.removePage( page.pageRef );
                 }
             }
             else
@@ -119,15 +118,15 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     /**
      * Enters a page to the A1 list.
      **/
-    private void a1Enter(long pageRef, PageData pageData)
+    private void a1Enter( long pageRef, PageData pageData )
     {
-        this.a1List.addPageFront(pageRef, pageData);
+        this.a1List.addPageFront( pageRef, pageData );
     }
 
     /**
      * Evicts a page from the LRU managed A1 list
      **/
-    private long a2Evict(PageList pages, PageFaultEvent faultEvent) throws IOException
+    private long a2Evict( PageList pages, PageFaultEvent faultEvent ) throws IOException
     {
         doubleLinkedPageMetaDataList.Page page = null;
         int iterations = 0;
@@ -135,43 +134,45 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
 
         synchronized ( this.a2List )
         {
-            if (!this.a2List.empty())
+            if ( !this.a2List.empty( ) )
             {
                 page = this.a2List.tail;
                 do
                 {
 
-                    if (iterations >= this.a2List.size())
+                    if ( iterations >= this.a2List.size( ) )
                     {
                         return 0;
                     }
 
-                    if (pages.isLoaded(page.pageRef) && pages.decrementUsage(page.pageRef))
+                    if ( pages.isLoaded(page.pageRef ) && pages.decrementUsage( page.pageRef ) )
                     {
-                        evicted = pages.tryEvict(page.pageRef, faultEvent);
+                        evicted = pages.tryEvict( page.pageRef, faultEvent );
                     }
-                    if (evicted)
+                    if ( evicted )
                     {
                         break;
                     }
 
-                    if (page.last == null)
+                    if ( page.last == null )
                     {
                         page = a2List.tail;
-                    } else
+                    }
+                    else
                     {
                         page = page.last;
                     }
 
                     iterations++;
                 }
-                while (!evicted);
+                while ( !evicted );
 
-                if (evicted)
+                if ( evicted )
                 {
-                    this.a2List.removePage(page.pageRef);
+                    this.a2List.removePage( page.pageRef );
                 }
-            } else
+            }
+            else
             {
                 return 0;
             }
@@ -182,13 +183,13 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     /**
      * Enters a page to the A1 list.
      **/
-    private void a2Enter(long pageRef, PageData pageData)
+    private void a2Enter( long pageRef, PageData pageData )
     {
-        this.a2List.addPageFront(pageRef, pageData);
+        this.a2List.addPageFront( pageRef, pageData );
     }
 
     @Override
-    public long cooperativlyEvict(PageFaultEvent faultEvent, PageList pages) throws IOException
+    public long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException
     {
 
         long pageRef = 0;
@@ -196,45 +197,46 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
 
         do
         {
-            this.pageCache.assertHealthy();
-            if (this.pageCache.getFreelistHead() != null)
+            this.pageCache.assertHealthy( );
+            if ( this.pageCache.getFreelistHead( ) != null )
             {
                 return 0;
             }
 
-            if ( this.a1List.empty() && this.a2List.empty())
+            if ( this.a1List.empty( ) && this.a2List.empty( ) )
             {
                 return 0;
             }
 
-            if (iterations >= this.cooperativeEvictionLiveLockThreshold)
+            if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
             {
-                throw cooperativeEvictionLiveLock();
+                throw cooperativeEvictionLiveLock( );
             }
-            if (!this.a1List.empty())
+            if ( !this.a1List.empty( ) )
             {
-                pageRef = this.a1Evict(pages, faultEvent);
+                pageRef = this.a1Evict( pages, faultEvent );
 
             }
-            if (pageRef == 0 && !this.a2List.empty())
+            if ( pageRef == 0 && !this.a2List.empty( ) )
             {
-                pageRef = this.a2Evict(pages, faultEvent);
+                pageRef = this.a2Evict( pages, faultEvent );
             }
 
             //freelist head is null
-            if (pageRef == -1)
+            if ( pageRef == -1 )
             {
                 return 0;
             }
 
             iterations++;
 
-    } while(pageRef == 0);
+    }
+    while ( pageRef == 0 );
 
     return pageRef;
     }
 
-    private CacheLiveLockException cooperativeEvictionLiveLock()
+    private CacheLiveLockException cooperativeEvictionLiveLock( )
     {
         return new CacheLiveLockException(
                 "Live-lock encountered when trying to cooperatively evict a page during page fault. " +
@@ -249,59 +251,60 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
                         "your database." );
     }
 
-
     @Override
-    public void notifyPin(long pageRef, PageData pageData)
+    public void notifyPin( long pageRef, PageData pageData )
     {
-        synchronized ( this.a1List)
+        synchronized ( this.a1List )
         {
             synchronized ( this.a2List )
             {
-                if (!this.a1List.exists(pageRef) && !this.a2List.exists(pageRef))
+                if ( !this.a1List.exists( pageRef ) && !this.a2List.exists( pageRef ) )
                 {
-                    if (this.a1List.size() + 1 > this.a1Size)
+                    if ( this.a1List.size( ) + 1 > this.a1Size )
                     {
                     }
-                    this.a1Enter(pageRef, pageData);
-                } else if (this.a1List.exists(pageRef))
+                    this.a1Enter( pageRef, pageData );
+                }
+                else if ( this.a1List.exists( pageRef ) )
                 {
-                    if (this.a2List.size() + 1 > this.a2Size)
+                    if ( this.a2List.size( ) + 1 > this.a2Size )
                     {
 
                     }
 
-                    this.a1List.removePage(pageRef);
-                    this.a2Enter(pageRef, pageData);
+                    this.a1List.removePage( pageRef );
+                    this.a2Enter( pageRef, pageData );
 
-                } else if (this.a2List.exists(pageRef))
+                }
+                else if ( this.a2List.exists( pageRef ) )
                 {
-                    this.a2List.setPageDataAndMoveToHead(pageRef, pageData);
+                    this.a2List.setPageDataAndMoveToHead( pageRef, pageData );
                 }
 
                 return;
-            }}
+            }
+        }
 
     }
 
     @Override
-    public void externalEviction(long pageRef, PageData pageData)
+    public void externalEviction( long pageRef, PageData pageData )
     {
         synchronized ( this.a1List )
         {
-            if (this.a1List.exists(pageRef))
+            if ( this.a1List.exists( pageRef ) )
             {
-                this.a1List.removePage(pageRef);
+                this.a1List.removePage( pageRef );
             }
         }
 
         synchronized ( this.a2List )
         {
-            if (this.a2List.exists(pageRef))
+            if ( this.a2List.exists( pageRef ) )
             {
-                this.a2List.removePage(pageRef);
+                this.a2List.removePage( pageRef );
             }
         }
-
 
     }
 }

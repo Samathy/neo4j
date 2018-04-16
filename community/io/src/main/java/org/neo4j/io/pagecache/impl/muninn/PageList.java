@@ -267,11 +267,6 @@ public class PageList
         return pageRef + OFFSET_USAGE_COUNTER;
     }
 
-    private long offRecency( long pageRef )
-    {
-        return pageRef + OFFSET_RECENCY_COUNTER;
-    }
-
     private long offFilePageId( long pageRef )
     {
         return pageRef + OFFSET_FILE_PAGE_ID;
