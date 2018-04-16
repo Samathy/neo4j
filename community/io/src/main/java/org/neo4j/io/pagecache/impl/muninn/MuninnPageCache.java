@@ -204,8 +204,8 @@ public class MuninnPageCache implements PageCache
     // 'true' (the default) if we should print any exceptions we get when unmapping a file.
     private boolean printExceptionsOnClose;
 
-    // Instance of our page cache eviction algorithm, LRUK
-    private MuninnPageCacheAlgorithmLRUK PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRUK( this.cooperativeEvictionLiveLockThreshold, this, 6 );
+    // Instance of our page cache eviction algorithm, 2Q
+    private MuninnPageCacheAlgorithm2Q PageCacheAlgorithm = new MuninnPageCacheAlgorithm2Q( this.cooperativeEvictionLiveLockThreshold, this );
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.
