@@ -204,7 +204,7 @@ public class MuninnPageCache implements PageCache
     // 'true' (the default) if we should print any exceptions we get when unmapping a file.
     private boolean printExceptionsOnClose;
 
-    // Instance of our page cache eviction algorithm
+    // Instance of our page cache eviction algorithm, LFU
     private MuninnPageCacheAlgorithmLFU PageCacheAlgorithm = new MuninnPageCacheAlgorithmLFU( this.cooperativeEvictionLiveLockThreshold, this );
 
     /**
