@@ -115,6 +115,7 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                     if ( page == null || page.last == null )
                     {
                         page = this.dataPageList.tail;
+<<<<<<< HEAD
                         if ( page == null )
                         {
                             System.err.println( "Whoops. Somehow " +
@@ -122,6 +123,8 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                                     "dataPageList." );
                             printStatus();
                         }
+=======
+>>>>>>> Fix checkstyle errors
                     }
                     else if ( page.last != null )
                     {
@@ -206,8 +209,11 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                     //Set last usage time and first history element to fault in time.
                     newPageData.setAccessTime( 1, t );
                     newPageData.setLastUsageTime( t );
+<<<<<<< HEAD
 
                     this.dataPageList.addPageFront( pageRef, newPageData );
+=======
+>>>>>>> Fix checkstyle errors
 
                 }
                 else if ( this.dataPageList.exists( pageRef ) )
