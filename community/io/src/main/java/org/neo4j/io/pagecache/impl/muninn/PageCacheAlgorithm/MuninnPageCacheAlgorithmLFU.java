@@ -175,12 +175,6 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
                     count++;
 
                 }
-            }
-        }
-        synchronized ( this.pageList )
-        {
-            synchronized ( this.countChainList )
-            {
 
                 if ( !evicted )
                 {
