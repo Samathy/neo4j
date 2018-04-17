@@ -115,29 +115,31 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                         return 0;
                     }
 
-                    if ( iterations >= this.cacheSize )
+                    //if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
+                    if ( iterations >= this.cacheSize && iterations >= this.cooperativeEvictionLiveLockThreshold )
                     {
                         throw cooperativeEvictionLiveLock();
                     }
-                    if ( evictionCandidatePage.last != null )
+
+                   else  if ( evictionCandidatePage.last != null )
                     {
-                        evictionCandidatePage = evictionCandidatePage.last;
-                        evictionCandidate = evictionCandidatePage.pageRef;
+                            evictionCandidatePage = evictionCandidatePage.last;
+                            evictionCandidate = evictionCandidatePage.pageRef;
                     }
                     else
                     {
-                        throw cooperativeEvictionLiveLock();
+                        evictionCandidatePage = this.dataPageList.tail;
+                        evictionCandidate = evictionCandidatePage.pageRef;
                     }
                     //TODO We should probs do something if we've got to the HEAD of the list
 
                     if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                     {
-                        evicted = pages.tryEvict(evictionCandidate, faultEvent);
+                        evicted = pages.tryEvict( evictionCandidate, faultEvent );
                     }
 
                     iterations++;
                 }
-
             }
             catch ( Exception e )
             {
@@ -153,9 +155,8 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
             {
                 throw cooperativeEvictionLiveLock();
             }
-
-            return evictionCandidate;
         }
+        return evictionCandidate;
     }
 
     private CacheLiveLockException cooperativeEvictionLiveLock()

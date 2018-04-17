@@ -68,7 +68,5 @@ public interface PageCacheAlgorithm
      *
      */
     void printStatus();
-
-
 }
 
