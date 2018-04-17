@@ -39,6 +39,8 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
     private int cooperativeEvictionLiveLockThreshold;
 
+    long cacheSize;
+
     // Needs the instance of the page cache we're in
     // So we can access it's pages.
     private MuninnPageCache pageCache;
@@ -62,6 +64,12 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
     private void resetReferenceTime()
     {
         referenceTime = System.nanoTime();
+    }
+
+    //void method for compatability
+    public void setNumberOfPages( long maxPages )
+    {
+        this.cacheSize = maxPages;
     }
 
     public MuninnPageCacheAlgorithmLRU( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache )
@@ -107,7 +115,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                         return 0;
                     }
 
-                    if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
+                    if ( iterations >= this.cacheSize )
                     {
                         throw cooperativeEvictionLiveLock();
                     }
@@ -115,6 +123,10 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                     {
                         evictionCandidatePage = evictionCandidatePage.last;
                         evictionCandidate = evictionCandidatePage.pageRef;
+                    }
+                    else
+                    {
+                        throw cooperativeEvictionLiveLock();
                     }
                     //TODO We should probs do something if we've got to the HEAD of the list
 
@@ -190,5 +202,50 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
             }
         }
         return;
+    }
+
+    @Override
+    public synchronized void close( boolean debug )
+    {
+        if ( debug )
+        {
+            printStatus();
+        }
+
+    }
+
+    @Override
+    public void printStatus( )
+    {
+
+        long iterations;
+
+        doubleLinkedPageMetaDataList.Page page = this.dataPageList.head;
+
+        for ( iterations = 0; iterations < this.dataPageList.size(); iterations++ )
+        {
+            String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
+                    " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
+                    " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
+
+            if ( this.dataPageList.head == page )
+
+            {
+                msg = msg + "<--HEAD";
+            }
+            else if ( this.dataPageList.tail == page )
+            {
+                msg = msg + "<--TAIL";
+            }
+
+            System.out.println( msg );
+
+            page = page.next;
+        }
+
+        System.out.println( "CacheSize: " + this.cacheSize);
+        System.out.println( "dataPageList size: " + this.dataPageList.size() );
+        System.out.println( "cooperativevictionLivelockThreshold: " + this.cooperativeEvictionLiveLockThreshold );
+
     }
 }

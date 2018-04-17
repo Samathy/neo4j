@@ -47,6 +47,12 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
         this.cooperativeEvictionLiveLockThreshold = cooperativeEvictionLiveLockThreshold;
     }
 
+    @Override
+    public void setNumberOfPages( long maxPages )
+    {
+
+    }
+
     public long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException
     {
         /** Note this is called concurrently by Muninn, any object data stored should be
@@ -112,6 +118,18 @@ public final class MuninnPageCacheAlgorithmCLOCK implements PageCacheAlgorithm
 
     @Override
     public void externalEviction( long pageRef, PageData pageData )
+    {
+
+    }
+
+    @Override
+    public synchronized void close( boolean debug )
+    {
+
+    }
+
+    @Override
+    public void printStatus()
     {
 
     }

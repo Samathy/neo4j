@@ -55,6 +55,12 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
         referenceTime = System.nanoTime( );
     }
 
+    @Override
+    public void setNumberOfPages( long maxPages )
+    {
+
+    }
+
     public MuninnPageCacheAlgorithmLRUK( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache, int kSize )
     {
         this.kSize = kSize;
@@ -233,6 +239,50 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
             this.dataPageList.removePage( pageRef );
         }
         return;
+    }
+
+    @Override
+    public synchronized void close( boolean debug )
+    {
+        if ( debug )
+        {
+            printStatus();
+        }
+    }
+
+    @Override
+    public void printStatus()
+    {
+        long iterations;
+
+        doubleLinkedPageMetaDataList.Page page = this.dataPageList.head;
+
+        System.out.println("A1List: ");
+
+        for ( iterations = 0; iterations < this.dataPageList.size(); iterations++ )
+        {
+            String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
+                    " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
+                    " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
+
+            if ( this.dataPageList.head == page )
+            {
+                msg = msg + "<--HEAD";
+            }
+            else if ( this.dataPageList.tail == page )
+            {
+                msg = msg + "<--TAIL";
+            }
+
+            System.out.println(msg);
+
+            page = page.next;
+        }
+
+        System.out.println("dataPageList size: " + this.dataPageList.size());
+
+        System.out.println("CorrelatedReferenceTimeout: " + this.correlatedReferenceTimeout);
+        System.out.println("kSize" + this.kSize);
     }
 
 }

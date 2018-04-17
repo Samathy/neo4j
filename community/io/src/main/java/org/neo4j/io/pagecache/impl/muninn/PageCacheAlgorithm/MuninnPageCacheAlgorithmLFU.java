@@ -494,6 +494,16 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
         return;
     }
 
+    @Override
+    public synchronized void close( boolean debug )
+    {
+        if ( debug )
+        {
+            printStatus();
+        }
+    }
+
+    @Override
     public void printStatus( )
     {
         doubleLinkedPageMetaDataList.Page page = this.pageList.head;
@@ -501,10 +511,9 @@ public class MuninnPageCacheAlgorithmLFU implements PageCacheAlgorithm
         while ( page != null )
         {
 
-            String msg = format( "PageRef: " + page.pageRef + " References: " +
-                    page.pageData.getRefCount() + " isNew:"
-                     + page.pageData.isNew() + " isOld:"
-                     + page.pageData.isOld() + "");
+            String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
+                    " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
+                    " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
             if ( this.new_boundary == page )
             {
                 msg = msg + "<-- new_boundary";

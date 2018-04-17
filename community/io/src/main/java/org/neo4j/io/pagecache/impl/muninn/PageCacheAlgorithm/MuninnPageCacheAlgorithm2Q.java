@@ -37,6 +37,9 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
     long a1Size;
     long a2Size;
 
+    long a1ListEvictions;
+    long a2ListEvictions;
+
     //Entry list. FiFo managed, stores pages referenced once
     doubleLinkedPageMetaDataList a1List = new doubleLinkedPageMetaDataList( );
 
@@ -85,6 +88,7 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
                     }
                     if ( evicted )
                     {
+                        this.a1ListEvictions++;
                         break;
                     }
 
@@ -151,6 +155,7 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
                     }
                     if ( evicted )
                     {
+                        this.a2ListEvictions++;
                         break;
                     }
 
@@ -305,6 +310,77 @@ public class MuninnPageCacheAlgorithm2Q implements PageCacheAlgorithm
                 this.a2List.removePage( pageRef );
             }
         }
+
+    }
+
+    @Override
+    public synchronized void close( boolean debug )
+    {
+        if ( debug )
+        {
+            printStatus();
+        }
+
+    }
+
+    @Override
+    public void printStatus( )
+    {
+
+        long iterations;
+
+        doubleLinkedPageMetaDataList.Page page = this.a1List.head;
+
+        System.out.println("A1List: ");
+
+        for ( iterations = 0; iterations < this.a1List.size(); iterations++ )
+        {
+            String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
+                    " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
+                    " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
+
+             if ( this.a1List.head == page )
+            {
+                msg = msg + "<--HEAD";
+            }
+            else if ( this.a2List.tail == page )
+            {
+                msg = msg + "<--TAIL";
+            }
+
+            System.out.println(msg);
+        }
+
+        System.out.println("A2List: ");
+
+        page = this.a2List.head;
+
+        for ( iterations = 0; iterations < this.a2List.size(); iterations++ )
+        {
+            String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
+                    " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
+                    " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
+
+            if ( this.a2List.head == page )
+            {
+                msg = msg + "<--HEAD";
+            }
+            else if ( this.a2List.tail == page )
+            {
+                msg = msg + "<--TAIL";
+            }
+
+            System.out.println(msg);
+
+            page = page.next;
+        }
+
+        System.out.println("CacheSize: " + ( this.a1Size + this.a2Size ) );
+        System.out.println("A1List size: " + this.a1List.size());
+        System.out.println("A2List size: " + this.a2List.size());
+
+        System.out.println("A1List Evictions: " + this.a1ListEvictions);
+        System.out.println("A2List Evictions: " + this.a2ListEvictions);
 
     }
 }

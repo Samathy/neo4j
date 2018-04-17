@@ -51,5 +51,24 @@ public interface PageCacheAlgorithm
      * @param pageData
      */
     void externalEviction( long pageRef, PageData pageData );
+
+    /** Tell the algorithm how big the cache is.
+     * We would like to be able to do this with a constructor argument,
+     * but since the number of pages is given to the page cache only on calling
+     * its constructor, we can't pass that data when this object is created.
+     *
+     * @param maxPages
+     */
+    void setNumberOfPages( long maxPages );
+
+    /** Called on close of the page-cache */
+    void close( boolean debug );
+
+    /** Prints debug information about the state of the pages known to the page-cache-algorithm
+     *
+     */
+    void printStatus();
+
+
 }
 

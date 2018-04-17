@@ -652,9 +652,14 @@ public class MuninnPageCache implements PageCache
         interrupt( evictionThread );
         evictionThread = null;
 
+        //While we're doing testing, we want to know cache statistics
+        boolean debug = false;
+
+        //Call a close method in case the algorithm wants to do anything.
+        this.PageCacheAlgorithm.close( debug );
+
         // Close the page swapper factory last. If this fails then we will still consider ourselves closed.
         swapperFactory.close();
-        this.PageCacheAlgorithm.printStatus();
 
     }
 
@@ -809,6 +814,7 @@ public class MuninnPageCache implements PageCache
             }
             catch ( Exception e )
             {
+                this.PageCacheAlgorithm.printStatus();
                 throw e;
             }
     }
