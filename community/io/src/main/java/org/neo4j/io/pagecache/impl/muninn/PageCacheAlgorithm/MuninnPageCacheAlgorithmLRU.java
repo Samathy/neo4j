@@ -225,6 +225,11 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
 
         for ( iterations = 0; iterations < this.dataPageList.size(); iterations++ )
         {
+            if ( page == null )
+            {
+                break;
+            }
+
             String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
                     " FaultInTime: " + page.pageData.getFaultInTime() + " References: " + page.pageData.getRefCount() +
                     " Old: " + page.pageData.isOld() + " New: " + page.pageData.isNew() + " ]";
