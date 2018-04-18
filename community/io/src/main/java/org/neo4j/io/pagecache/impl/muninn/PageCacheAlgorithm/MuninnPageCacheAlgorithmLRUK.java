@@ -45,6 +45,10 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
 
     private int referencesT;
 
+    private long cacheSize;
+
+    private int numEvictionRequests;
+
     public static long referenceTime;
 
     //TODO Think of a better name for this variable.
@@ -58,7 +62,7 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
     @Override
     public void setNumberOfPages( long maxPages )
     {
-
+        this.cacheSize = maxPages;
     }
 
     public MuninnPageCacheAlgorithmLRUK( int cooperativeEvictionLiveLockThreshold, MuninnPageCache pageCache, int kSize )
@@ -72,6 +76,7 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
 
     public long cooperativlyEvict( PageFaultEvent faultEvent, PageList pages ) throws IOException
     {
+        this.numEvictionRequests++;
 
         boolean evicted = false;
         int iterations = 0;
@@ -112,7 +117,7 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                         page = this.dataPageList.tail;
                         if ( page == null )
                         {
-                            System.err.println ( "Whoops. Somehow " +
+                            System.err.println( "Whoops. Somehow " +
                                     "we've got a null pointer for the tail of our " +
                                     "dataPageList." );
                             printStatus();
@@ -266,8 +271,6 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
 
         doubleLinkedPageMetaDataList.Page page = this.dataPageList.head;
 
-        System.out.println("A1List: ");
-
         for ( iterations = 0; iterations < this.dataPageList.size(); iterations++ )
         {
             String msg = "[PageRef: " + page.pageRef + "LastUsageTime: " + page.pageData.getLastUsageTime() +
@@ -283,15 +286,17 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                 msg = msg + "<--TAIL";
             }
 
-            System.out.println(msg);
+            System.out.println( msg );
 
             page = page.next;
         }
 
-        System.out.println("dataPageList size: " + this.dataPageList.size());
+        System.out.println( "dataPageList size: " + this.dataPageList.size());
 
-        System.out.println("CorrelatedReferenceTimeout: " + this.correlatedReferenceTimeout);
-        System.out.println("kSize" + this.kSize);
+        System.out.println( "CorrelatedReferenceTimeout: " + this.correlatedReferenceTimeout);
+        System.out.println( "kSize" + this.kSize);
+        System.out.println( "CacheSize: " + this.cacheSize );
+        System.out.println( "Number of Eviction Requests: " + this.numEvictionRequests );
     }
 
 }
