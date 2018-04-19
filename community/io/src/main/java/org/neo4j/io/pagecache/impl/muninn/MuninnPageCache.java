@@ -205,7 +205,7 @@ public class MuninnPageCache implements PageCache
     private boolean printExceptionsOnClose;
 
     // Instance of our page cache eviction algorithm, 2Q
-    private MuninnPageCacheAlgorithmCLOCK PageCacheAlgorithm = new MuninnPageCacheAlgorithmCLOCK( this.cooperativeEvictionLiveLockThreshold, this );
+    private MuninnPageCacheAlgorithmLRUK PageCacheAlgorithm = new MuninnPageCacheAlgorithmLRUK( this.cooperativeEvictionLiveLockThreshold, this, 2 );
 
     /**
      * Compute the amount of memory needed for a page cache with the given number of 8 KiB pages.

@@ -132,6 +132,31 @@ public class MuninnPageCacheAlgorithmLRUK implements PageCacheAlgorithm
                         break;
                     }
 
+                    if ( t == null )
+                    {
+                        System.out.println( "t == null" );
+                    }
+                    else if ( page == null )
+                    {
+                        System.out.println( "Page is null" );
+                    }
+                    else if ( page.pageData.getLastUsageTime( ) == null )
+                    {
+                        System.out.println( " page.pageData.getLastUsageTime( ) == null" );
+                    }
+                    else if ( this.correlatedReferenceTimeout = null )
+                    {
+                        System.out.println( " this.correlatedReferenceTimeout == null" );
+                    }
+                    else if ( this.kSize == null )
+                    {
+                        System.out.println( " this.kSize == null" );
+                    }
+                    else if ( page.pageData.getHistoryTime( this.kSize ) = null )
+                    {
+                        System.out.println( " page.pageData.getHistoryTime( this.kSize ) == null" );
+                    }
+
                     if ( t - page.pageData.getLastUsageTime( ) > this.correlatedReferenceTimeout &&
                             page.pageData.getHistoryTime( this.kSize ) <= minEvictionTime &&
                             !tried.contains( page.pageRef ) )
