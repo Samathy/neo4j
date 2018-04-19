@@ -51,6 +51,40 @@ public class doubleLinkedPageMetaDataListTest
 
     }
 
+    @Test
+    public void moveVariousPagesToTheHead()
+    {
+        int listLength = 300;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList(1,
+                new PageData(1)
+                        .withFaultInTime(System.nanoTime())
+        );
+
+        for (int reference = 0; reference < listLength; reference++)
+        {
+            dlpl.addPageFront(reference, new PageData(reference));
+        }
+
+        dlpl.moveToFront(30);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == 30);
+
+        dlpl.moveToFront(94);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == 94);
+
+        dlpl.moveToFront(94);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == 94);
+
+        long ref = dlpl.tail.pageRef;
+        dlpl.moveToFront(dlpl.tail.pageRef);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == ref);
+
+        dlpl.moveToFront(67);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == 67);
+
+        dlpl.moveToFront(103);
+        assertTrue("Page at the head is not the one we put there!", dlpl.head.pageRef == 103);
+    }
+
     @Test ( expected = IndexOutOfBoundsException.class )
     public void throwsOnRemovingNonExistentPage( )
     {
@@ -227,6 +261,31 @@ public class doubleLinkedPageMetaDataListTest
         assert dlpl.size( ) == 0 : "List reports erroneous size after removing 1 element. Should be: " + 0 +
                                    " Reports: " + dlpl.size( );
     }
+
+    @Test
+    public void shouldMoveHeadBackIfHeadIsRemoved()
+    {
+        int listLength = 10;
+        doubleLinkedPageMetaDataList dlpl = new doubleLinkedPageMetaDataList();
+
+        assertTrue("List Size Is Not 0", 0 == dlpl.size());
+
+        for (int reference = 0; reference != listLength; reference++)
+        {
+            dlpl.addPageFront(reference, new PageData(reference));
+        }
+
+        assert listLength == dlpl.size() : "List reports erroneous size after adding" + listLength +
+                "element( s ). Should be: " + listLength +
+                " Reports: " + dlpl.size();
+
+        long removedPageRef = dlpl.head.pageRef;
+        dlpl.removePage(dlpl.head.pageRef);
+
+        assertTrue(dlpl.head.pageRef != removedPageRef);
+    }
+
+
 
 //    /** Does bad things with setting the page refs in the PageData instance and
 //     * the page metadata to different things.
