@@ -88,6 +88,8 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
         doubleLinkedPageMetaDataList.Page evictionCandidatePage;
         long evictionCandidate;
 
+        int evictionAttempts = 0;
+
         synchronized ( this.dataPageList )
         {
             pageCount = pages.getPageCount();
@@ -118,6 +120,8 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                     //if ( iterations >= this.cooperativeEvictionLiveLockThreshold )
                     if ( iterations >= this.cacheSize && iterations >= this.cooperativeEvictionLiveLockThreshold )
                     {
+                        System.out.println( "Tried to evict: " + evictionAttempts +
+                                            " pages, but no candidate was successful ");
                         throw cooperativeEvictionLiveLock();
                     }
 
@@ -136,6 +140,7 @@ public class MuninnPageCacheAlgorithmLRU implements PageCacheAlgorithm
                     if ( pages.isLoaded( evictionCandidate ) && pages.decrementUsage( evictionCandidate ) )
                     {
                         evicted = pages.tryEvict( evictionCandidate, faultEvent );
+                        evictionAttempts++;
                     }
                     if ( evicted  )
                     {
